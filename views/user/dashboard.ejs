@@ -83,6 +83,87 @@ socket.on('sensorUpdated', data => {
     }
 });
 
+const myCustomColourRed = '#da142d'
+
+const markerHtmlStylesRed = `
+  background-color: ${myCustomColourRed};
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  left: -0.75rem;
+  top: -0.75rem;
+  position: relative;
+  border-radius: 1.5rem 1.5rem 0;
+  transform: rotate(45deg);
+  border: 1px solid #FFFFFF;
+`;
+
+const myCustomColourGreen = '#12b92e'
+
+const markerHtmlStylesGreen = `
+  background-color: ${myCustomColourGreen};
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  left: -0.75rem;
+  top: -0.75rem;
+  position: relative;
+  border-radius: 1.5rem 1.5rem 0;
+  transform: rotate(45deg);
+  border: 1px solid #FFFFFF;
+`;
+
+socket.on('Threshold', (Dev_Address) => {
+    console.log('Threshold update received:', Dev_Address);
+
+    // Find the corresponding marker for the given Dev_Address
+    const marker = markers[Dev_Address];
+
+    if (marker) {
+        // Update the marker's color by changing its icon
+        const newIcon = L.divIcon({
+        className: "my-custom-pin",
+        iconAnchor: [0, 24],
+        labelAnchor: [-6, 0],
+        popupAnchor: [0, -36],
+        html: `<span style="${markerHtmlStylesRed}" />`
+        })
+
+        // Set the new icon to the marker
+        marker.setIcon(newIcon);
+
+        console.log(`Marker icon updated for Dev_Address: ${Dev_Address}`);
+    } else {
+        console.log(`No marker found for Dev_Address: ${Dev_Address}`);
+    }
+});
+
+socket.on('Threshold1', (Dev_Address) => {
+    console.log('Threshold update received:', Dev_Address);
+
+    // Find the corresponding marker for the given Dev_Address
+    const marker = markers[Dev_Address];
+
+    if (marker) {
+        // Update the marker's color by changing its icon
+        const newIcon = L.divIcon({
+        className: "my-custom-pin",
+        iconAnchor: [0, 24],
+        labelAnchor: [-6, 0],
+        popupAnchor: [0, -36],
+        html: `<span style="${markerHtmlStylesGreen}" />`
+        })
+
+        // Set the new icon to the marker
+        marker.setIcon(newIcon);
+
+        console.log(`Marker icon updated for Dev_Address: ${Dev_Address}`);
+    } else {
+        console.log(`No marker found for Dev_Address: ${Dev_Address}`);
+    }
+});
+
+
 socket.on('sensorDelete', data => {
     console.log('Sensor delete update received:', data);
     // Remove the sensor from the array
@@ -128,7 +209,7 @@ marker.on('click', () => {
         console.log('Real-time data received:', data);
 
         // Check if the data is for the clicked sensor
-        if (data.sensorId === sensor.sensorId) {
+        if (data.Dev_Address === sensor.sensorId) {
             // Generate a table from the received JSON data
             generateTable(data.data_sensor, sensor.sensorId);
         }
@@ -159,7 +240,7 @@ marker.on('click', () => {
         //         }
         //     });
     } else {
-        // Add a new marker
+        // Add a new marker    
         const marker = L.marker([location.lat, location.lng]).addTo(map);
         marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
         markers[sensorId] = marker; // Store the marker for later updates
@@ -175,8 +256,9 @@ marker.on('click', () => {
                 console.log('Real-time data received:', data);
 
                 // Check if the data is for the clicked sensor
-                if (data.sensorId === sensor.sensorId) {
+                if (data.Dev_Address === sensor.sensorId) {
                     // Generate a table from the received JSON data
+                    console.log(1212)
                     generateTable(data.data_sensor, sensor.sensorId);
                 }
             });
@@ -239,50 +321,61 @@ function deleteSensor(sensorId) {
      * @param {Object} jsonData - Parsed JSON data from the server.
      * @param {String} sensorId - ID of the sensor.
      */
-    function generateTable(jsonData, sensorId) {
-        // Find or create the container for the table
-        const container = document.getElementById('sensor-data-table-container') || createTableContainer();
-        
-        // Clear any existing content
-        container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
-        
-        // Create the table
-        const table = document.createElement('table');
-        table.border = '1';
+     function generateTable(jsonData, sensorId) {
+    // Find or create the container for the table
+    const container = document.getElementById('sensor-data-table-container') || createTableContainer();
+    
+    // Clear any existing content
+    container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
+    
+    if (!jsonData || jsonData.length === 0) {
+        container.innerHTML += '<p>No data available for this sensor.</p>';
+        return;
+    }
 
-        // Create table headers
-        const thead = table.createTHead();
-        const headerRow = thead.insertRow();
-        Object.keys(jsonData).forEach(key => {
-            const th = document.createElement('th');
-            th.textContent = key;
-            headerRow.appendChild(th);
-        });
+    // Define the fields to display
+    const fields = ['Dev_Address', 'Time', 'Fcnt', 'SF', 'Data'];
 
-        // Create table rows
-        const tbody = table.createTBody();
-        const dataRow = tbody.insertRow();
-        Object.values(jsonData).forEach(value => {
+    // Create the table
+    const table = document.createElement('table');
+    table.border = '1';
+
+    // Create table headers
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    fields.forEach(field => {
+        const th = document.createElement('th');
+        th.textContent = field;
+        headerRow.appendChild(th);
+    });
+
+    // Create table rows
+    const tbody = table.createTBody();
+    jsonData.forEach(rowData => {
+        const row = tbody.insertRow();
+        fields.forEach(field => {
             const td = document.createElement('td');
-            td.textContent = value;
-            dataRow.appendChild(td);
+            td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
+            row.appendChild(td);
         });
+    });
 
-        // Append the table to the container
-        container.appendChild(table);
-    }
+    // Append the table to the container
+    container.appendChild(table);
+}
 
-    /**
-     * Create a container for the sensor data table if it doesn't already exist.
-     * @returns {HTMLElement} The created container element.
-     */
-    function createTableContainer() {
-        const container = document.createElement('div');
-        container.id = 'sensor-data-table-container';
-        container.style.marginTop = '20px';
-        document.body.appendChild(container);
-        return container;
-    }
+/**
+ * Create a container for the sensor data table if it doesn't already exist.
+ * @returns {HTMLElement} The created container element.
+ */
+function createTableContainer() {
+    const container = document.createElement('div');
+    container.id = 'sensor-data-table-container';
+    container.style.marginTop = '20px';
+    document.body.appendChild(container);
+    return container;
+}
+
 </script>
     </script>
 </body>
