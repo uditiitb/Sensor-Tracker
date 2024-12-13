@@ -9,8 +9,8 @@ const NodeCache = require('node-cache');
 const SensorMeta = require('./models/SensorMetadata')
 const sensor = require('./models/sensor')
 const fs = require('fs');
-
 const mongoose = require('mongoose');
+const { spawn } = require('child_process');
 
 // MongoDB connection
 const MONGO_URI = 'mongodb://localhost:27017/sensorDB';
@@ -22,6 +22,7 @@ mongoose.connect(MONGO_URI, {
     .catch(err => console.error('MongoDB connection error:', err));
 
 const db = mongoose.connection;
+
 
 // Cache for storing real-time data
 // const realTimeCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
@@ -118,8 +119,8 @@ app.get('/admin', async (req, res) => {
 // Add Sensor Route
 app.post('/admin/add', async (req, res) => {
     console.log(req.body);
-    const { sensorId, lat, lng } = req.body;
-    const sensorMeta = new SensorMeta({ sensorId, location: { lat, lng } });
+    const { sensorId, type, lat, lng } = req.body;
+    const sensorMeta = new SensorMeta({ sensorId, type, location: { lat, lng } });
 
     try {
         // Save sensor metadata to the 'SensorMeta' collection
@@ -188,10 +189,11 @@ app.post('/admin/add', async (req, res) => {
 
 // Update Sensor Route
 app.post('/admin/update/:id', async (req, res) => {
-    const { lat, lng } = req.body;
+    const { type ,lat, lng } = req.body;
     
     try {
         const sensorMeta = await SensorMeta.findByIdAndUpdate(req.params.id, {
+            type: type,
             location: { lat, lng },
         }, { new: true });
         
@@ -243,6 +245,70 @@ app.post('/admin/delete/:id', async (req, res) => {
     }
 });
 
+app.post('/admin/hardreset/', async (req, res) => {
+    io.emit('hardDeleted');
+    try {
+        console.log('Hard Reset received');
+
+        // Access the MongoDB native driver
+        const db = mongoose.connection.db;
+
+        // Fetch all collections with the prefix 'sensor_'
+        const collections = await db.listCollections({}).toArray();
+        const sensorCollections = collections.filter(c => c.name.startsWith('sensor_'));
+
+        // Drop each collection with the prefix 'sensor_'
+        for (const collection of sensorCollections) {
+            try {
+                await db.collection(collection.name).drop();
+                console.log(`Collection ${collection.name} deleted.`);
+            } catch (err) {
+                console.error(`Error deleting collection ${collection.name}:`, err);
+            }
+        }
+
+        // Clear all documents in the `SensorMeta` collection
+        await SensorMeta.deleteMany({});
+        console.log('All documents in SensorMeta collection deleted.');
+
+        // Notify all connected clients about the reset
+        io.emit('HardResetComplete', 'All sensor data and metadata have been cleared.');
+        res.redirect('/admin');
+
+    } catch (err) {
+        console.error('Error handling HardReset:', err);
+        io.emit('HardResetError', 'An error occurred while performing the reset.');
+    }
+
+})
+
+app.post('/admin/softreset/:id', async (req, res) => {
+    const { id } = req.params; // Extract the ID from the route parameters
+    const collectionName = `sensor_${id}`; // Dynamically generate the collection name
+
+    try {
+        // Access the dynamically named collection
+        const collection = db.collection(collectionName);
+
+        // Delete all documents in the collection
+        const result = await collection.deleteMany({});
+
+        if (result.deletedCount > 0) {
+            console.log(`Successfully deleted ${result.deletedCount} documents from ${collectionName}`);
+            res.redirect('/admin');
+        } else {
+            console.log(`No documents found in ${collectionName}`);
+            res.redirect('/admin');
+        }
+    } catch (error) {
+        console.error(`Error deleting documents from collection '${collectionName}':`, error);
+        res.status(500).send('An error occurred while attempting to delete documents.');
+    }
+});
+
+
+
+
 // app.post('/admin/delete/:id', async (req, res) => {
 //     try {
 //         const deletedSensor = await SensorMeta.findByIdAndDelete(req.params.id);
@@ -273,6 +339,35 @@ app.get('/check',(req,res)=>{
 })
 
 
+// Function to call the Python script
+function decrypt(arg1,arg2) {
+    return new Promise((resolve, reject) => {
+        const pythonProcess = spawn('python', ['./process_messages.py', arg1,arg2]);
+
+        let output = '';  // Variable to accumulate the output
+
+        // Collect data from Python script's stdout
+        pythonProcess.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        // Handle any errors from the Python script
+        pythonProcess.stderr.on('data', (data) => {
+            reject(`Python error: ${data.toString()}`);
+        });
+
+        // When the Python script finishes
+        pythonProcess.on('close', (code) => {
+            if (code === 0) {
+                resolve(output.trim());  // Resolve the Promise with the output (trim any extra whitespace)
+            } else {
+                reject(`Python script exited with code ${code}`);
+            }
+        });
+    });
+}
+
+
 // Real-time data socket
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -297,16 +392,64 @@ io.on('connection', (socket) => {
                 socket.emit('realTimeData', { Dev_Address, data_sensor: [] });
                 return;
             }
-    
+            
             console.log(`Fetched ${recentData.length} records for ${collectionName}`);
-    
+            
             // Emit the real-time data
-            socket.emit('realTimeData', { Dev_Address, data_sensor: recentData });
+            // console.log('recent data',recentData)
+            const recentData1 = await Promise.all(
+                recentData.map(async (obj) => {
+                    const decryptedData = await decrypt(obj.Dev_Address,obj.Data); // Await the decryption result
+                    console.log(decryptedData)
+                    return {
+                    ...obj, // Spread the other properties
+                    Data: decryptedData, // Set the resolved value of Data
+                    };
+                })
+                );
+            console.log(recentData1)
+            socket.emit('realTimeData', { Dev_Address, data_sensor: recentData1 });
         } catch (err) {
             console.error('Error in getSensorData handler:', err);
             socket.emit('realTimeData', { Dev_Address, data_sensor: [] });
         }
     });
+
+    // socket.on('HardReset', async () => {
+    //     io.emit('hardDeleted');
+    //     try {
+    //         console.log('Hard Reset received');
+    
+    //         // Access the MongoDB native driver
+    //         const db = mongoose.connection.db;
+    
+    //         // Fetch all collections with the prefix 'sensor_'
+    //         const collections = await db.listCollections({}).toArray();
+    //         const sensorCollections = collections.filter(c => c.name.startsWith('sensor_'));
+    
+    //         // Drop each collection with the prefix 'sensor_'
+    //         for (const collection of sensorCollections) {
+    //             try {
+    //                 await db.collection(collection.name).drop();
+    //                 console.log(`Collection ${collection.name} deleted.`);
+    //             } catch (err) {
+    //                 console.error(`Error deleting collection ${collection.name}:`, err);
+    //             }
+    //         }
+    
+    //         // Clear all documents in the `SensorMeta` collection
+    //         await SensorMeta.deleteMany({});
+    //         console.log('All documents in SensorMeta collection deleted.');
+    
+    //         // Notify all connected clients about the reset
+    //         io.emit('HardResetComplete', 'All sensor data and metadata have been cleared.');
+    
+    //     } catch (err) {
+    //         console.error('Error handling HardReset:', err);
+    //         io.emit('HardResetError', 'An error occurred while performing the reset.');
+    //     }
+    // });
+    
     
     // socket.on('getSensorData', (Dev_Address) => {
     //     try {
@@ -386,7 +529,7 @@ io.on('connection', (socket) => {
 
 
 // Start server
-const PORT = 3000;
+const PORT = 3001;
 http.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
