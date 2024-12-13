@@ -349,136 +349,287 @@ function deleteSensor(sensorId) {
      * @param {String} sensorId - ID of the sensor.
      */
      function generateTable(jsonData, sensorId, type) {
-        const container = document.getElementById('sensor-data-table-container') || createTableContainer();
+    const container = document.getElementById('sensor-data-table-container') || createTableContainer();
 
-// Clear any existing content
-container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
-container.innerHTML += `<h3>Data for Sensor Type: ${type}</h3>`;
+    // Clear any existing content
+    container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
+    container.innerHTML += `<h3>Data for Sensor Type: ${type}</h3>`;
 
-// Create date and time filter inputs
-const filterContainer = document.createElement('div');
-filterContainer.innerHTML = `
-    <label for="startDate">Start Date:</label>
-    <input type="date" id="startDate">
-    <input type="time" id="startTime">
-    <label for="endDate">End Date:</label>
-    <input type="date" id="endDate">
-    <input type="time" id="endTime">
-    <button id="applyFilter">Apply</button>
-`;
-container.appendChild(filterContainer);
+    // Create date and time filter inputs
+    const filterContainer = document.createElement('div');
+    filterContainer.innerHTML = `
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate">
+        <input type="time" id="startTime">
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate">
+        <input type="time" id="endTime">
+        <button id="applyFilter">Apply</button>
+    `;
+    container.appendChild(filterContainer);
 
-// Create the download button
-const downloadButton = document.createElement('button');
-downloadButton.textContent = 'Download as CSV';
-container.appendChild(downloadButton);
+    // Create the download button
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = 'Download as CSV';
+    container.appendChild(downloadButton);
 
-// Define the fields to display
-const fields = ['Time', 'Fcnt', 'SF', 'Data'];
+    // Define the fields to display
+    const fields = ['Time', 'Fcnt', 'SF', 'Data'];
 
-// Create a table element
-const table = document.createElement('table');
-table.border = '1';
-container.appendChild(table);
+    // Create a table element
+    const table = document.createElement('table');
+    table.border = '1';
+    container.appendChild(table);
 
-// Function to filter data
-function filterData(data, startDate, startTime, endDate, endTime) {
-    if (!startDate && !startTime && !endDate && !endTime) return data;
-
-    const start = startDate
-        ? new Date(`${startDate}T${startTime || '00:00'}`).getTime()
-        : null;
-    const end = endDate
-        ? new Date(`${endDate}T${endTime || '23:59'}`).getTime()
-        : null;
-
-    return data.filter(row => {
-        const rowTime = new Date(row.Time).getTime();
-        return (!start || rowTime >= start) && (!end || rowTime <= end);
-    });
-}
-
-// Function to generate the table
-function generateTable(data) {
-    table.innerHTML = ''; // Clear the table content
-
-    if (!data || data.length === 0) {
-        table.innerHTML = '<p>No data available for this sensor.</p>';
-        return;
+    // Parse `Data` field to split into tuples
+    function parseDataField(dataString) {
+        return dataString
+            .split('\r\n') // Split the string by newline characters
+            .filter(line => line.trim()) // Remove empty lines
+            .map(tupleString => tupleString.replace(/[()]/g, '').split(',').map(Number)); // Parse each tuple
     }
 
-    // Create table headers
-    const thead = table.createTHead();
-    const headerRow = thead.insertRow();
-    fields.forEach(field => {
-        const th = document.createElement('th');
-        th.textContent = field;
-        headerRow.appendChild(th);
-    });
+    // Function to filter data
+    function filterData(data, startDate, startTime, endDate, endTime) {
+        if (!startDate && !startTime && !endDate && !endTime) return data;
 
-    // Create table rows
-    const tbody = table.createTBody();
-    data.forEach(rowData => {
-        const row = tbody.insertRow();
+        const start = startDate
+            ? new Date(`${startDate}T${startTime || '00:00'}`).getTime()
+            : null;
+        const end = endDate
+            ? new Date(`${endDate}T${endTime || '23:59'}`).getTime()
+            : null;
+
+        return data.filter(row => {
+            const rowTime = new Date(row.Time).getTime();
+            return (!start || rowTime >= start) && (!end || rowTime <= end);
+        });
+    }
+
+    // Function to generate the table
+    function generateTable(data) {
+        table.innerHTML = ''; // Clear the table content
+
+        if (!data || data.length === 0) {
+            table.innerHTML = '<p>No data available for this sensor.</p>';
+            return;
+        }
+
+        // Create table headers
+        const thead = table.createTHead();
+        const headerRow = thead.insertRow();
         fields.forEach(field => {
-            const td = document.createElement('td');
-            td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
-            row.appendChild(td);
+            const th = document.createElement('th');
+            th.textContent = field;
+            headerRow.appendChild(th);
         });
-    });
-}
 
-// Generate the table with all data initially
-generateTable(jsonData);
-
-// Add event listener to the apply button
-document.getElementById('applyFilter').addEventListener('click', () => {
-    const startDate = document.getElementById('startDate').value;
-    const startTime = document.getElementById('startTime').value;
-    const endDate = document.getElementById('endDate').value;
-    const endTime = document.getElementById('endTime').value;
-
-    const filteredData = filterData(jsonData, startDate, startTime, endDate, endTime);
-    generateTable(filteredData); // Regenerate the table with filtered data
-
-    // Update the download button functionality
-    updateDownloadButton(filteredData);
-});
-
-// Function to update the download button with filtered data
-function updateDownloadButton(data) {
-    downloadButton.onclick = () => {
-        let csvContent = '';
-
-        // Add headers
-        csvContent += `Data for Sensor: ${sensorId}\n`;
-        csvContent += `Data for Sensor Type: ${type}\n\n`;
-
-        // Add table headers
-        csvContent += fields.join(',') + '\n';
-
-        // Add table rows
+        // Create table rows
+        const tbody = table.createTBody();
         data.forEach(rowData => {
-            const row = fields.map(field => (rowData[field] !== undefined ? rowData[field] : 'N/A'));
-            csvContent += row.join(',') + '\n';
+            const row = tbody.insertRow();
+            fields.forEach(field => {
+                const td = document.createElement('td');
+                if (field === 'Data' && rowData[field]) {
+                    // Display each tuple in a new line
+                    const parsedData = parseDataField(rowData[field]);
+                    td.innerHTML = parsedData.map(tuple => tuple.join(', ')).join('<br>');
+                } else {
+                    td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
+                }
+                row.appendChild(td);
+            });
         });
+    }
 
-        // Create a blob and trigger download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    // Generate the table with all data initially
+    generateTable(jsonData);
+
+    // Add event listener to the apply button
+    document.getElementById('applyFilter').addEventListener('click', () => {
+        const startDate = document.getElementById('startDate').value;
+        const startTime = document.getElementById('startTime').value;
+        const endDate = document.getElementById('endDate').value;
+        const endTime = document.getElementById('endTime').value;
+
+        const filteredData = filterData(jsonData, startDate, startTime, endDate, endTime);
+        generateTable(filteredData); // Regenerate the table with filtered data
+
+        // Update the download button functionality
+        updateDownloadButton(filteredData);
+    });
+
+    // Function to update the download button with filtered data
+    function updateDownloadButton(data) {
+        downloadButton.onclick = () => {
+            let csvContent = '';
+
+            // Add headers
+            csvContent += `Data for Sensor: ${sensorId}\n`;
+            csvContent += `Data for Sensor Type: ${type}\n\n`;
+
+            // Add table headers
+            csvContent += fields.join(',') + '\n';
+
+            // Add table rows
+            data.forEach(rowData => {
+                const row = fields.map(field => {
+                    if (field === 'Data' && rowData[field]) {
+                        const parsedData = parseDataField(rowData[field]);
+                        return `"${parsedData.map(tuple => tuple.join(', ')).join('\n')}"`;
+                    }
+                    return rowData[field] !== undefined ? rowData[field] : 'N/A';
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Create a blob and trigger download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    }
+
+    // Initialize the download button with all data
+    updateDownloadButton(jsonData);
 }
 
-// Initialize the download button with all data
-updateDownloadButton(jsonData);
+//      function generateTable(jsonData, sensorId, type) {
+//         const container = document.getElementById('sensor-data-table-container') || createTableContainer();
 
-}
+// // Clear any existing content
+// container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
+// container.innerHTML += `<h3>Data for Sensor Type: ${type}</h3>`;
+
+// // Create date and time filter inputs
+// const filterContainer = document.createElement('div');
+// filterContainer.innerHTML = `
+//     <label for="startDate">Start Date:</label>
+//     <input type="date" id="startDate">
+//     <input type="time" id="startTime">
+//     <label for="endDate">End Date:</label>
+//     <input type="date" id="endDate">
+//     <input type="time" id="endTime">
+//     <button id="applyFilter">Apply</button>
+// `;
+// container.appendChild(filterContainer);
+
+// // Create the download button
+// const downloadButton = document.createElement('button');
+// downloadButton.textContent = 'Download as CSV';
+// container.appendChild(downloadButton);
+
+// // Define the fields to display
+// const fields = ['Time', 'Fcnt', 'SF', 'Data'];
+
+// // Create a table element
+// const table = document.createElement('table');
+// table.border = '1';
+// container.appendChild(table);
+
+// // Function to filter data
+// function filterData(data, startDate, startTime, endDate, endTime) {
+//     if (!startDate && !startTime && !endDate && !endTime) return data;
+
+//     const start = startDate
+//         ? new Date(`${startDate}T${startTime || '00:00'}`).getTime()
+//         : null;
+//     const end = endDate
+//         ? new Date(`${endDate}T${endTime || '23:59'}`).getTime()
+//         : null;
+
+//     return data.filter(row => {
+//         const rowTime = new Date(row.Time).getTime();
+//         return (!start || rowTime >= start) && (!end || rowTime <= end);
+//     });
+// }
+
+// // Function to generate the table
+// function generateTable(data) {
+//     table.innerHTML = ''; // Clear the table content
+
+//     if (!data || data.length === 0) {
+//         table.innerHTML = '<p>No data available for this sensor.</p>';
+//         return;
+//     }
+
+//     // Create table headers
+//     const thead = table.createTHead();
+//     const headerRow = thead.insertRow();
+//     fields.forEach(field => {
+//         const th = document.createElement('th');
+//         th.textContent = field;
+//         headerRow.appendChild(th);
+//     });
+
+//     // Create table rows
+//     const tbody = table.createTBody();
+//     data.forEach(rowData => {
+//         const row = tbody.insertRow();
+//         fields.forEach(field => {
+//             const td = document.createElement('td');
+//             td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
+//             row.appendChild(td);
+//         });
+//     });
+// }
+
+// // Generate the table with all data initially
+// generateTable(jsonData);
+
+// // Add event listener to the apply button
+// document.getElementById('applyFilter').addEventListener('click', () => {
+//     const startDate = document.getElementById('startDate').value;
+//     const startTime = document.getElementById('startTime').value;
+//     const endDate = document.getElementById('endDate').value;
+//     const endTime = document.getElementById('endTime').value;
+
+//     const filteredData = filterData(jsonData, startDate, startTime, endDate, endTime);
+//     generateTable(filteredData); // Regenerate the table with filtered data
+
+//     // Update the download button functionality
+//     updateDownloadButton(filteredData);
+// });
+
+// // Function to update the download button with filtered data
+// function updateDownloadButton(data) {
+//     downloadButton.onclick = () => {
+//         let csvContent = '';
+
+//         // Add headers
+//         csvContent += `Data for Sensor: ${sensorId}\n`;
+//         csvContent += `Data for Sensor Type: ${type}\n\n`;
+
+//         // Add table headers
+//         csvContent += fields.join(',') + '\n';
+
+//         // Add table rows
+//         data.forEach(rowData => {
+//             const row = fields.map(field => (rowData[field] !== undefined ? rowData[field] : 'N/A'));
+//             csvContent += row.join(',') + '\n';
+//         });
+
+//         // Create a blob and trigger download
+//         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+//         const url = URL.createObjectURL(blob);
+//         const link = document.createElement('a');
+//         link.href = url;
+//         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+//         document.body.appendChild(link);
+//         link.click();
+//         document.body.removeChild(link);
+//     };
+// }
+
+// // Initialize the download button with all data
+// updateDownloadButton(jsonData);
+
+// }
 
 /**
  * Create a container for the sensor data table if it doesn't already exist.
