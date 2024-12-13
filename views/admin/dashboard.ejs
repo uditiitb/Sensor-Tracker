@@ -12,14 +12,27 @@
         <input type="text" name="sensorId" placeholder="Sensor ID" required>
         <input type="number" name="lat" placeholder="Latitude" step="0.000001" required>
         <input type="number" name="lng" placeholder="Longitude" step="0.000001" required>
+        <select name="type" required>
+            <option value="" disabled selected>Select Type</option>
+            <option value="A">A</option>
+            <option value="K">K</option>
+        </select>
         <button type="submit">Add Sensor</button>
     </form>
 
+    <br>
+    <!-- Button with onclick -->
+     <form action="/admin/hardreset/" method="POST">
+        <button type="submit">Hard Reset All Sensors</button>
+     </form>
+    <br>
+    
     <table>
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Location</th>
+                <th>Type</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -28,172 +41,459 @@
                 <tr>
                     <td><%= sensor.sensorId %></td>
                     <td><%= sensor.location.lat %>, <%= sensor.location.lng %></td>
+                    <td><%= sensor.type %></td>
                     <td>
                         <form action="/admin/update/<%= sensor.id %>" method="POST">
-                            <input type="text" name="name" value="<%= sensor.sensorId %>">
-                            <input type="text" name="lat" value="<%= sensor.location.lat %>">
-                            <input type="text" name="lng" value="<%= sensor.location.lng %>">
+                            <input type="text" name="name" value="<%= sensor.sensorId %>" required>
+                            <input type="number" name="lat" value="<%= sensor.location.lat %>" step="0.000001" required>
+                            <input type="number" name="lng" value="<%= sensor.location.lng %>" step="0.000001" required>
+                            <select name="type" required>
+                                <option value="A" <%= sensor.type === "A" ? "selected" : "" %>>A</option>
+                                <option value="K" <%= sensor.type === "K" ? "selected" : "" %>>K</option>
+                            </select>
                             <button type="submit">Update</button>
                         </form>
-
+    
                         <form action="/admin/delete/<%= sensor.id %>" method="POST" style="display: inline;">
                             <button type="submit" onclick="return confirm('Are you sure you want to delete this sensor?')">Delete</button>
+                        </form>
+                        <form action="/admin/softreset/<%= sensor.sensorId %>" method="POST" style="display: inline;">
+                            <button type="submit" onclick="return confirm('Are you sure you want to delete all datas of this sensor?')">Soft Reset</button>
                         </form>
                     </td>
                 </tr>
             <% }); %>
         </tbody>
     </table>
+    
     <div id="map" style="height: 300px; width: 50%;"></div>
 
     <script>
-        const socket = io(); // Connect to the Socket.IO server
-        const map = L.map('map').setView([19.13294, 72.9153], 14); // Initialize the map
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-        }).addTo(map);
+    //handle hard reset
+    // function handleHardReset(){
+    //     socket.emit('HardReset');
+    // }
 
-        const markers = {}; // Store markers for each sensor by ID
 
-        // Initialize the map with existing sensors
-        const sensors = <%- JSON.stringify(sensors) %>; // Data passed from the server
-        console.log(sensors)
-        sensors.forEach(sensor => {
-            addOrUpdateSensor(sensor);
-        });
 
-        // Listen for real-time updates
-        socket.on('sensorUpdated', data => {
-            console.log('Sensor update received:', data);
-            if (data.action === 'add' || data.action === 'update' || true) {
-                addOrUpdateSensor(data);
-            }
-        });
+    const socket = io(); // Connect to the Socket.IO server
+const map = L.map('map').setView([19.13294, 72.9153], 14); // Initialize the map
 
-        socket.on('sensorDelete',data => {
-            console.log('Sensor delete update received:', data);
-            deleteSensor(data.sensorId);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+}).addTo(map);
+
+const markers = {}; // Store markers for each sensor by ID
+let sensors = <%- JSON.stringify(sensors) %>; // Initial sensors loaded from the server
+
+// Initialize the map with existing sensors
+// sensors.forEach(sensor => addOrUpdateSensor(sensor));
+sensors.forEach((sensor)=>{
+    addOrUpdateSensor(sensor);
+});
+
+// Listen for real-time updates
+socket.on('sensorUpdated', data => {
+    console.log('Sensor update received:', data);
+    const index = sensors.findIndex(s => s.sensorId === data.sensorId);
+    if (data.action === 'add' || data.action === 'update' || true) {
+        if (index !== -1) {
+            // Update existing sensor in the array
+            sensors[index] = data;
+        } else {
+            // Add new sensor to the array
+            sensors.push(data);
+        }
+        addOrUpdateSensor(data);
+        
+    }
+});
+
+const myCustomColourRed = '#da142d'
+
+const markerHtmlStylesRed = `
+  background-color: ${myCustomColourRed};
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  left: -0.75rem;
+  top: -0.75rem;
+  position: relative;
+  border-radius: 1.5rem 1.5rem 0;
+  transform: rotate(45deg);
+  border: 1px solid #FFFFFF;
+`;
+
+const myCustomColourGreen = '#12b92e'
+
+const markerHtmlStylesGreen = `
+  background-color: ${myCustomColourGreen};
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+  left: -0.75rem;
+  top: -0.75rem;
+  position: relative;
+  border-radius: 1.5rem 1.5rem 0;
+  transform: rotate(45deg);
+  border: 1px solid #FFFFFF;
+`;
+
+socket.on('Threshold', (Dev_Address) => {
+    console.log('Threshold update received:', Dev_Address);
+
+    // Find the corresponding marker for the given Dev_Address
+    const marker = markers[Dev_Address];
+
+    if (marker) {
+        // Update the marker's color by changing its icon
+        const newIcon = L.divIcon({
+        className: "my-custom-pin",
+        iconAnchor: [0, 24],
+        labelAnchor: [-6, 0],
+        popupAnchor: [0, -36],
+        html: `<span style="${markerHtmlStylesRed}" />`
         })
 
-        // Add or update a sensor on the map
-        function addOrUpdateSensor(sensor) {
-            const { sensorId, location } = sensor;
-            if (markers[sensorId]) {
-                // Update existing marker
-                console.log('here1')
-                const marker = markers[sensorId];
-                marker.setLatLng([location.lat, location.lng]);
-                marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
-            } else {
-                // Add a new marker
-                console.log('here2')
-                const marker = L.marker([location.lat,location.lng]).addTo(map);
-                marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
-                markers[sensorId] = marker; // Store the marker for later updates
-            }
+        // Set the new icon to the marker
+        marker.setIcon(newIcon);
+
+        console.log(`Marker icon updated for Dev_Address: ${Dev_Address}`);
+    } else {
+        console.log(`No marker found for Dev_Address: ${Dev_Address}`);
+    }
+});
+
+socket.on('Threshold1', (Dev_Address) => {
+    console.log('Threshold update received:', Dev_Address);
+
+    // Find the corresponding marker for the given Dev_Address
+    const marker = markers[Dev_Address];
+
+    if (marker) {
+        // Update the marker's color by changing its icon
+        const newIcon = L.divIcon({
+        className: "my-custom-pin",
+        iconAnchor: [0, 24],
+        labelAnchor: [-6, 0],
+        popupAnchor: [0, -36],
+        html: `<span style="${markerHtmlStylesGreen}" />`
+        })
+
+        // Set the new icon to the marker
+        marker.setIcon(newIcon);
+
+        console.log(`Marker icon updated for Dev_Address: ${Dev_Address}`);
+    } else {
+        console.log(`No marker found for Dev_Address: ${Dev_Address}`);
+    }
+});
+
+
+socket.on('sensorDelete', data => {
+    console.log('Sensor delete update received:', data);
+    // Remove the sensor from the array
+    sensors = sensors.filter(sensor => sensor.sensorId !== data.sensorId);
+    deleteSensor(data.sensorId);
+});
+
+// Emit a request for real-time data on marker hover
+// sensors.forEach(sensor => {
+//     const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
+//     marker.on('mouseover', () => {
+//         socket.emit('getSensorData', sensor.sensorId);
+//     });
+//     socket.on('realTimeData', data => {
+//         if (data.sensorId === sensor.sensorId) {
+//             marker.bindPopup(`Id: ${sensor.sensorId}, Data: ${JSON.stringify(data)}`).openPopup();
+//         }
+//     });
+// });
+
+// Add or update a sensor on the map
+function addOrUpdateSensor(sensor) {
+    const { sensorId, location } = sensor;
+    if (markers[sensorId]) {
+        map.removeLayer(markers[sensorId]);
+    delete markers[sensorId];
+
+    const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
+markers[sensorId] = marker; // Save the marker in the markers object
+
+marker.bindPopup(`<strong>${sensorId}</strong><br>(${sensor.location.lat}, ${sensor.location.lng})`);
+
+// Add a click event listener to the marker
+marker.on('click', () => {
+    // Emit a request for real-time data for the clicked sensor
+    socket.emit('getSensorData', sensor.sensorId);
+
+    // Remove any existing listener for real-time data
+    // socket.off('realTimeData');
+
+    // Attach a new listener for real-time data
+    socket.on('realTimeData', data => {
+        console.log('Real-time data received:', data);
+
+        // Check if the data is for the clicked sensor
+        if (data.Dev_Address === sensor.sensorId) {
+            // Generate a table from the received JSON data
+            generateTable(data.data_sensor, sensor.sensorId);
         }
+    });
+});
+        // Update existing marker
+        // map.removeLayer(markers[sensorId]);
+        // delete markers[sensorId];
+        // // marker1.setLatLng([location.lat, location.lng]);
+        // const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
+        // markers[sensorId] = marker;
+        // marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
 
+        //     // Add a click event listener to the marker
+        //     marker.on('click', () => {
+        //         // Emit a request for real-time data for the clicked sensor
+        //         socket.emit('getSensorData', sensor.sensorId);
+        //     });
 
+        //     // Listen for real-time data from the server
+        //     socket.on('realTimeData', data => {
+        //         console.log('Real-time data received:', data);
 
-        function deleteSensor(sensorId) {
-            if (markers[sensorId]) {
-                // Remove the marker from the map
-                map.removeLayer(markers[sensorId]);
+        //         // Check if the data is for the clicked sensor
+        //         if (data.sensorId === sensor.sensorId) {
+        //             // Generate a table from the received JSON data
+        //             generateTable(data.data_sensor, sensor.sensorId);
+        //         }
+        //     });
+    } else {
+        // Add a new marker    
+        const marker = L.marker([location.lat, location.lng]).addTo(map);
+        marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
+        markers[sensorId] = marker; // Store the marker for later updates
 
-                // Remove the marker reference from the markers object
-                delete markers[sensorId];
-
-                console.log(`Sensor with ID ${sensorId} deleted successfully.`);
-            } else {
-                console.log(`Sensor with ID ${sensorId} not found.`);
-            }
-        }
-
-        sensors.forEach(sensor => {
-            const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
-            marker.on('mouseover', () => {
+            // Add a click event listener to the marker
+            marker.on('click', () => {
+                // Emit a request for real-time data for the clicked sensor
                 socket.emit('getSensorData', sensor.sensorId);
             });
+
+            // Listen for real-time data from the server
             socket.on('realTimeData', data => {
                 console.log('Real-time data received:', data);
-                if (data.sensorId === sensor.sensorId) {
-                    marker.bindPopup(`Id: ${sensor.sensorId}`).openPopup();
+
+                // Check if the data is for the clicked sensor
+                if (data.Dev_Address === sensor.sensorId) {
+                    // Generate a table from the received JSON data
+                    console.log(1212)
+                    generateTable(data.data_sensor, sensor.sensorId, sensor.type);
                 }
             });
-        });
+    }
+}
 
-        sensors.forEach(sensor => {
-        // Add a marker for each sensor
-        const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
+// Remove a sensor's marker from the map
+function deleteSensor(sensorId) {
+    // Check if the marker exists in the markers object
+    if (markers[sensorId]) {
+        // Check if the marker is currently on the map
+        if (map.hasLayer(markers[sensorId])) {
+            map.removeLayer(markers[sensorId]); // Remove the marker from the map
+            delete markers[sensorId]; // Delete the marker from the markers object
+            console.log(`Sensor with ID ${sensorId} deleted successfully.`);
+        } else {
+            console.log(`Marker for sensor ID ${sensorId} is not on the map.`);
+        }
+    } else {
+        console.log(`Sensor with ID ${sensorId} not found in the markers object.`);
+    }
+}
 
-        // Add a click event listener to the marker
-        marker.on('click', () => {
-            // Emit a request for real-time data for the clicked sensor
-            socket.emit('getSensorData', sensor.sensorId);
-        });
+// function deleteSensor(sensorId) {
+//     if (markers[sensorId]) {
+//         map.removeLayer(markers[sensorId]); // Remove the marker
+//         delete markers[sensorId]; // Remove from the markers object
+//         console.log(`Sensor with ID ${sensorId} deleted successfully.`);
+//     } else {
+//         console.log(`Sensor with ID ${sensorId} not found.`);
+//     }
+// }
 
-        // Listen for real-time data from the server
-        socket.on('realTimeData', data => {
-            console.log('Real-time data received:', data);
 
-            // Check if the data is for the clicked sensor
-            if (data.sensorId === sensor.sensorId) {
-                // Generate a table from the received JSON data
-                generateTable(data.data_sensor, sensor.sensorId);
-            }
-        });
-    });
+
+    //     sensors.forEach(sensor => {
+    //         // Add a marker for each sensor
+    //         const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
+
+    //         // Add a click event listener to the marker
+    //         marker.on('click', () => {
+    //             // Emit a request for real-time data for the clicked sensor
+    //             socket.emit('getSensorData', sensor.sensorId);
+    //         });
+
+    //         // Listen for real-time data from the server
+    //         socket.on('realTimeData', data => {
+    //             console.log('Real-time data received:', data);
+
+    //             // Check if the data is for the clicked sensor
+    //             if (data.sensorId === sensor.sensorId) {
+    //                 // Generate a table from the received JSON data
+    //                 generateTable(data.data_sensor, sensor.sensorId);
+    //             }
+    //         });
+    // });
 
     /**
      * Generate a table from the JSON data and append it to a container in the HTML.
      * @param {Object} jsonData - Parsed JSON data from the server.
      * @param {String} sensorId - ID of the sensor.
      */
-    function generateTable(jsonData, sensorId) {
-        // Find or create the container for the table
+     function generateTable(jsonData, sensorId, type) {
         const container = document.getElementById('sensor-data-table-container') || createTableContainer();
-        
-        // Clear any existing content
-        container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
-        
-        // Create the table
-        const table = document.createElement('table');
-        table.border = '1';
 
-        // Create table headers
-        const thead = table.createTHead();
-        const headerRow = thead.insertRow();
-        Object.keys(jsonData).forEach(key => {
-            const th = document.createElement('th');
-            th.textContent = key;
-            headerRow.appendChild(th);
-        });
+// Clear any existing content
+container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
+container.innerHTML += `<h3>Data for Sensor Type: ${type}</h3>`;
 
-        // Create table rows
-        const tbody = table.createTBody();
-        const dataRow = tbody.insertRow();
-        Object.values(jsonData).forEach(value => {
+// Create date and time filter inputs
+const filterContainer = document.createElement('div');
+filterContainer.innerHTML = `
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate">
+    <input type="time" id="startTime">
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate">
+    <input type="time" id="endTime">
+    <button id="applyFilter">Apply</button>
+`;
+container.appendChild(filterContainer);
+
+// Create the download button
+const downloadButton = document.createElement('button');
+downloadButton.textContent = 'Download as CSV';
+container.appendChild(downloadButton);
+
+// Define the fields to display
+const fields = ['Time', 'Fcnt', 'SF', 'Data'];
+
+// Create a table element
+const table = document.createElement('table');
+table.border = '1';
+container.appendChild(table);
+
+// Function to filter data
+function filterData(data, startDate, startTime, endDate, endTime) {
+    if (!startDate && !startTime && !endDate && !endTime) return data;
+
+    const start = startDate
+        ? new Date(`${startDate}T${startTime || '00:00'}`).getTime()
+        : null;
+    const end = endDate
+        ? new Date(`${endDate}T${endTime || '23:59'}`).getTime()
+        : null;
+
+    return data.filter(row => {
+        const rowTime = new Date(row.Time).getTime();
+        return (!start || rowTime >= start) && (!end || rowTime <= end);
+    });
+}
+
+// Function to generate the table
+function generateTable(data) {
+    table.innerHTML = ''; // Clear the table content
+
+    if (!data || data.length === 0) {
+        table.innerHTML = '<p>No data available for this sensor.</p>';
+        return;
+    }
+
+    // Create table headers
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    fields.forEach(field => {
+        const th = document.createElement('th');
+        th.textContent = field;
+        headerRow.appendChild(th);
+    });
+
+    // Create table rows
+    const tbody = table.createTBody();
+    data.forEach(rowData => {
+        const row = tbody.insertRow();
+        fields.forEach(field => {
             const td = document.createElement('td');
-            td.textContent = value;
-            dataRow.appendChild(td);
+            td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
+            row.appendChild(td);
+        });
+    });
+}
+
+// Generate the table with all data initially
+generateTable(jsonData);
+
+// Add event listener to the apply button
+document.getElementById('applyFilter').addEventListener('click', () => {
+    const startDate = document.getElementById('startDate').value;
+    const startTime = document.getElementById('startTime').value;
+    const endDate = document.getElementById('endDate').value;
+    const endTime = document.getElementById('endTime').value;
+
+    const filteredData = filterData(jsonData, startDate, startTime, endDate, endTime);
+    generateTable(filteredData); // Regenerate the table with filtered data
+
+    // Update the download button functionality
+    updateDownloadButton(filteredData);
+});
+
+// Function to update the download button with filtered data
+function updateDownloadButton(data) {
+    downloadButton.onclick = () => {
+        let csvContent = '';
+
+        // Add headers
+        csvContent += `Data for Sensor: ${sensorId}\n`;
+        csvContent += `Data for Sensor Type: ${type}\n\n`;
+
+        // Add table headers
+        csvContent += fields.join(',') + '\n';
+
+        // Add table rows
+        data.forEach(rowData => {
+            const row = fields.map(field => (rowData[field] !== undefined ? rowData[field] : 'N/A'));
+            csvContent += row.join(',') + '\n';
         });
 
-        // Append the table to the container
-        container.appendChild(table);
-    }
+        // Create a blob and trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+}
 
-    /**
-     * Create a container for the sensor data table if it doesn't already exist.
-     * @returns {HTMLElement} The created container element.
-     */
-    function createTableContainer() {
-        const container = document.createElement('div');
-        container.id = 'sensor-data-table-container';
-        container.style.marginTop = '20px';
-        document.body.appendChild(container);
-        return container;
-    }
+// Initialize the download button with all data
+updateDownloadButton(jsonData);
+
+}
+
+/**
+ * Create a container for the sensor data table if it doesn't already exist.
+ * @returns {HTMLElement} The created container element.
+ */
+function createTableContainer() {
+    const container = document.createElement('div');
+    container.id = 'sensor-data-table-container';
+    container.style.marginTop = '20px';
+    document.body.appendChild(container);
+    return container;
+}
+
+
+
     </script>
     
 </body>
