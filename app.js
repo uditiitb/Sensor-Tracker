@@ -283,16 +283,16 @@ fs.watch(filePath, async (eventType) => {
                     let result = 0
                     if (fileLines.length > 100) {
                         // Extract the first 50 lines
-                        const first50Lines = fileLines.slice(0, 50);
+                        const first100Lines = fileLines.slice(0, 100);
                         const remainingLines = fileLines.slice(50);
 
                         // console.log(first50Lines)
 
                         // Combine the first 50 lines into a single string
-                        const first50LinesString = first50Lines.join('\n');
+                        const first100LinesString = first100Lines.join('\n');
                         // console.log(first50LinesString)
                         // Pass the first 50 lines as a string to the Python function
-                        result = await processLinesWithPython(first50LinesString);
+                        result = await processLinesWithPython(first100LinesString);
 
 
                         console.log(`Python function result: ${result}`,'\n');
@@ -303,10 +303,10 @@ fs.watch(filePath, async (eventType) => {
 
                     if(result==0){
                         console.log("New data is too large");
-                        io.emit('Threshold1',jsonObject.Dev_Address);
+                        io.emit('Threshold1',jsonObject.Dev_Address); //green
                     }
                     else if(result==1) {
-                        io.emit('Threshold',jsonObject.Dev_Address);
+                        io.emit('Threshold',jsonObject.Dev_Address); //red
                     }
 
                     // Use `Dev_Address` to determine the collection name
