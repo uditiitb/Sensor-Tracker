@@ -1,3 +1,4 @@
+// Requiring modules
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
@@ -25,7 +26,8 @@ const db = mongoose.connection;
 
 const userRoutes = require('./routes/user');
 
-const createSchema = () => new mongoose.Schema({}, { strict: false }); // Schema for dynamic collections
+// Schema for dynamic collections
+const createSchema = () => new mongoose.Schema({}, { strict: false });
 
 const getModel = (collectionName) => {
     if (mongoose.models[collectionName]) {
@@ -34,11 +36,11 @@ const getModel = (collectionName) => {
     return mongoose.model(collectionName, createSchema(), collectionName);
 };
 
-// Function to call the Python script
-function processLinesWithPython(lines) {
+// Function to call the Threshold Processing Python script
+function processLinesWithPython(type,lines) {
     console.log('lim',lines)
     return new Promise((resolve, reject) => {
-        const pythonProcess = spawn('python', ['./processing&detection.py', lines]);
+        const pythonProcess = spawn('python', ['./processing&detection.py', type, lines]);
         let result = '';
 
         pythonProcess.stdout.on('data', (data) => {
@@ -59,7 +61,33 @@ function processLinesWithPython(lines) {
     });
 }
 
-// Function to call the Python script
+function processLinesWithPython_x(type,lines) {
+    console.log('lim',lines)
+    return new Promise((resolve, reject) => {
+        const pythonProcess = spawn('python', ['./leak_x.py', type, lines]);
+        let result = '';
+
+        pythonProcess.stdout.on('data', (data) => {
+            result += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`Python Error: ${data}`);
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code === 0) {
+                resolve(result.trim());
+            } else {
+                reject(new Error(`Python script exited with code ${code}`));
+            }
+        });
+    });
+}
+
+
+
+// Function to call the Decryption Python script
 function decrypt(arg1,arg2) {
     return new Promise((resolve, reject) => {
         const pythonProcess = spawn('python', ['./process_messages.py', arg1,arg2]);
@@ -87,9 +115,11 @@ function decrypt(arg1,arg2) {
     });
 }
 
+// File Path to watch incoming data from Gateway
 const filePath = './data.txt';
 let fileSize = 0;
 let result = 0;
+let distances = []
 
 fs.watch(filePath, async (eventType) => {
     if (eventType === 'change') {
@@ -118,9 +148,21 @@ fs.watch(filePath, async (eventType) => {
                 try {
                     // Parse the newly appended JSON object
                     const jsonObject1 = JSON.parse(newData.trim());
+                    const devAddress = jsonObject1.Dev_Address;
 
-                    // Perform decryption on `jsonObj1.Data` and create `jsonObj2`
-                    const decryptedData = await decrypt(jsonObject1.Dev_Address, jsonObject1.Data);
+                    // Retrieve the sensor metadata using Dev_Address
+                    const sensorMetadata = await SensorMeta.findOne({ sensorId: devAddress });
+
+                    if (!sensorMetadata) {
+                        console.error(`No metadata found for sensorId: ${devAddress}`);
+                        return;
+                    }
+                    
+                    const sensorType = sensorMetadata.type;
+                    console.log("type is : ",sensorType);
+            
+                    // Perform decryption with sensor type and Data
+                    const decryptedData = await decrypt(sensorType, jsonObject1.Data);
 
                     const jsonObject = {
                         ...jsonObject1,         // Spread the properties of jsonObj1
@@ -165,14 +207,25 @@ fs.watch(filePath, async (eventType) => {
                     const fileLines = fs.readFileSync(devFilePath, 'utf8').trim().split('\n');
                     // let result = 0
                     if (fileLines.length > 100) {
+                        let chunck_size = 0;
+                        let step_size = 0;
+                        if(sensorType == 'A'){
+                            chunck_size = 100
+                            step_size = 20
+                        }
+                        else if(sensorType == 'K'){
+                            chunck_size = 100
+                            step_size = 50
+                        }
                         // Extract the first 50 lines
-                        const first100Lines = fileLines.slice(0, 100);
-                        const remainingLines = fileLines.slice(50);
+                        const first100Lines = fileLines.slice(0, chunck_size);
+                        const remainingLines = fileLines.slice(step_size);
 
                         // Combine the first 100 lines into a single string
                         const first100LinesString = first100Lines.join('\n');
                         // Pass the first 100 lines as a string to the Python function
-                        result = await processLinesWithPython(first100LinesString);
+                        result = await processLinesWithPython(sensorType,first100LinesString);
+                        
 
                         console.log(`Python function result: ${result}`,'\n');
 
@@ -185,6 +238,36 @@ fs.watch(filePath, async (eventType) => {
                         io.emit('Threshold1',jsonObject.Dev_Address); //green
                     }
                     else if(result==1) {
+                        // distances = await processLinesWithPython_x(sensorType,first100LinesString);
+
+                        // const t = jsonObject.Time;
+
+                        // io.emit('dist',Dev_Address,t,distances);
+
+                        // Prepare the distance history array
+                        // let distancehist = [...distances, t]; // Assuming you want to append time `t` to the distances array
+
+                        // Find the document and append to distanceshistory array
+                        // try {
+                        //     const result = await sensorMetadata.findOneAndUpdate(
+                        //         { sensorId: Dev_Address }, // Query to find the document with the given sensorId
+                        //         {
+                        //             $push: {
+                        //                 distanceshistory: {
+                        //                     $each: [distancehist], // Append the distancehist array as a new entry
+                        //                     $slice: -6 // Keep only the last 6 entries in distanceshistory
+                        //                 }
+                        //             }
+                        //         },
+                        //         { new: true, upsert: true } // Return the updated document, create if not exists
+                        //     );
+
+                        //     console.log('Updated Sensor Document:', result);
+                        // } catch (error) {
+                        //     console.error('Error updating distanceshistory:', error);
+                        // }
+
+
                         // fs.writeFileSync('./threshold_log.txt',`${jsonObject.Time} ${jsonObject.Fcnt}`,);
                         fs.appendFileSync('./threshold_log.txt',`${jsonObject.Time} - (Fcnt) ${jsonObject.Fcnt} - (SF) ${jsonObject.SF}\n`)
                         io.emit('Threshold',jsonObject.Dev_Address); //red
@@ -207,6 +290,8 @@ fs.watch(filePath, async (eventType) => {
     }
 });
 
+
+// Middlewares
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'views')));
@@ -216,6 +301,7 @@ app.set('view engine', 'ejs');
 app.use('/user', userRoutes);
 
 //*********************************************************************** */
+// Routes for admin
 app.get('/admin', async (req, res) => {
     const sensors = await SensorMeta.find();
     res.render('admin/dashboard', { sensors });
@@ -225,7 +311,8 @@ app.get('/admin', async (req, res) => {
 app.post('/admin/add', async (req, res) => {
     console.log(req.body);
     const { sensorId, type, lat, lng } = req.body;
-    const sensorMeta = new SensorMeta({ sensorId, type, location: { lat, lng } });
+    const distanceshistory = [0,0,0,0];
+    const sensorMeta = new SensorMeta({ sensorId, type, location: { lat, lng } }, distanceshistory);
 
     try {
         // Save sensor metadata to the 'SensorMeta' collection
@@ -243,7 +330,11 @@ app.post('/admin/add', async (req, res) => {
         
         if (collections.length === 0) {
             // Create collection if it doesn't exist
-            await db.createCollection(collectionName);
+            // await db.createCollection(collectionName);
+            await db.createCollection(collectionName, {
+                capped: true,
+                size: 10240 // 10KB in bytes
+            });
             console.log(`Collection ${collectionName} created.`);
         }
 
@@ -391,12 +482,6 @@ app.post('/admin/softreset/:id', async (req, res) => {
 
 //*********************************************************************** */
 
-app.get('/check',(req,res)=>{
-    io.emit('do','ami udit');
-    return res.end();
-})
-
-
 // Real-time data socket
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -408,7 +493,11 @@ io.on('connection', (socket) => {
             
             // Fetch the collection
             const collection = db.collection(collectionName);
-    
+            const sensorMetadata = await SensorMeta.findOne({ sensorId: Dev_Address });
+
+            const distHist = sensorMetadata.distanceshistory;
+
+            
             // Query the 1000 most recent documents from the collection
             const recentData = await collection
                 .find({})
@@ -418,15 +507,15 @@ io.on('connection', (socket) => {
     
             if (!recentData || recentData.length === 0) {
                 console.log(`No data found for ${collectionName}`);
-                socket.emit('realTimeData', { Dev_Address, data_sensor: [] });
+                socket.emit('realTimeData', { Dev_Address, data_sensor: [], distHist });
                 return;
             }
             
             console.log(`Fetched ${recentData.length} records for ${collectionName}`);
-            socket.emit('realTimeData', { Dev_Address, data_sensor: recentData });
+            socket.emit('realTimeData', { Dev_Address, data_sensor: recentData , distHist});
         } catch (err) {
             console.error('Error in getSensorData handler:', err);
-            socket.emit('realTimeData', { Dev_Address, data_sensor: [] });
+            socket.emit('realTimeData', { Dev_Address, data_sensor: [], distHist });
         }
     });
 
