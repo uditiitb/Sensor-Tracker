@@ -9,9 +9,12 @@ const bodyParser = require('body-parser');
 const NodeCache = require('node-cache');
 const SensorMeta = require('./models/SensorMetadata')
 const sensor = require('./models/sensor')
+// const LeakHistory = require('./models/LeakHistory');
+const LeakHistory = require('./models/LeakHistory')
 const fs = require('fs');
 const mongoose = require('mongoose');
 const { spawn } = require('child_process');
+
 
 // MongoDB connection
 const MONGO_URI = 'mongodb://localhost:27017/sensorDB';
@@ -38,7 +41,7 @@ const getModel = (collectionName) => {
 
 // Function to call the Threshold Processing Python script
 function processLinesWithPython(type,lines) {
-    console.log('lim',lines)
+    // console.log('lim',lines)
     return new Promise((resolve, reject) => {
         const pythonProcess = spawn('python', ['./processing&detection.py', type, lines]);
         let result = '';
@@ -62,7 +65,7 @@ function processLinesWithPython(type,lines) {
 }
 
 function processLinesWithPython_x(type,lines) {
-    console.log('lim',lines)
+    // console.log('lim',lines)
     return new Promise((resolve, reject) => {
         const pythonProcess = spawn('python', ['./leak_x.py', type, lines]);
         let result = '';
@@ -120,6 +123,7 @@ const filePath = './data.txt';
 let fileSize = 0;
 let result = 0;
 let distances = []
+let first100LinesString = ""
 
 fs.watch(filePath, async (eventType) => {
     if (eventType === 'change') {
@@ -222,7 +226,7 @@ fs.watch(filePath, async (eventType) => {
                         const remainingLines = fileLines.slice(step_size);
 
                         // Combine the first 100 lines into a single string
-                        const first100LinesString = first100Lines.join('\n');
+                        first100LinesString = first100Lines.join('\n');
                         // Pass the first 100 lines as a string to the Python function
                         result = await processLinesWithPython(sensorType,first100LinesString);
                         
@@ -235,19 +239,46 @@ fs.watch(filePath, async (eventType) => {
 
                     if(result==0){
                         // console.log("New data is too large");
+                        io.emit('dist_not',Dev_Address);
                         io.emit('Threshold1',jsonObject.Dev_Address); //green
                     }
                     else if(result==1) {
-                        // distances = await processLinesWithPython_x(sensorType,first100LinesString);
+                        distances = await processLinesWithPython_x(sensorType,first100LinesString);
+                        console.log('DIST: ',distances)
 
-                        // const t = jsonObject.Time;
+                        const t = jsonObject.Time;
 
-                        // io.emit('dist',Dev_Address,t,distances);
+
+                        io.emit('dist', { devAddress: Dev_Address,type:sensorType, time: t, distances: distances });
+
 
                         // Prepare the distance history array
                         // let distancehist = [...distances, t]; // Assuming you want to append time `t` to the distances array
+                        
 
-                        // Find the document and append to distanceshistory array
+                        
+                        // Append directly to the LeakHistory collection
+                        try {
+                            // await LeakHistory.create({
+                            //     sensorId: Dev_Address,
+                            //     type: sensorType,
+                            //     time: t,
+                            //     distanceshistory: distances
+                            // });
+                            const leakHistory = new LeakHistory({
+                                sensorId: Dev_Address,
+                                type: sensorType,
+                                time: t,
+                                distanceshistory: distances
+                            });
+                            
+                            await leakHistory.save();
+
+                            console.log('New distance history appended successfully');
+                        } catch (error) {
+                            console.error('Error appending distance history:', error);
+                        }
+                        // // Find the document and append to distanceshistory array
                         // try {
                         //     const result = await sensorMetadata.findOneAndUpdate(
                         //         { sensorId: Dev_Address }, // Query to find the document with the given sensorId
@@ -485,6 +516,24 @@ app.post('/admin/softreset/:id', async (req, res) => {
 // Real-time data socket
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+
+    socket.on('test' ,() => {
+        console.log("HERE IN DIST");
+    })
+
+    socket.on('gethist',async ()=>{
+        try {
+            // Fetch the newest 6 documents from the LeakHistory collection
+            const history = await LeakHistory.find().sort({ _id: -1 });
+    
+            // Emit a new event with the retrieved documents
+            socket.emit('histdatagot', history);
+        } catch (error) {
+            console.error('Error fetching LeakHistory:', error);
+            // Optionally, emit an error event to the client
+            socket.emit('histdata_error', { message: 'Failed to fetch history data' });
+        }
+    })
     
     socket.on('getSensorData', async (Dev_Address) => {
         try {
