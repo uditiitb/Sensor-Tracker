@@ -8,6 +8,28 @@
 </head>
 <body>
     <h3>Admin Dashboard</h3>
+    <h2>Find Possible Latitude and Longitude</h2>
+    <div>
+        <label for="lat1">Latitude of Point 1: </label>
+        <input type="number" id="lat1" step="any" required>
+        <label for="lng1">Longitude of Point 1: </label>
+        <input type="number" id="lng1" step="any" required>
+    </div>
+    <div>
+        <label for="lat2">Latitude of Point 2: </label>
+        <input type="number" id="lat2" step="any" required>
+        <label for="lng2">Longitude of Point 2: </label>
+        <input type="number" id="lng2" step="any" required>
+    </div>
+    <div>
+        <label for="d1">Distance from Point 1 (in km): </label>
+        <input type="number" id="d1" step="any" required>
+        <label for="d2">Distance from Point 2 (in km): </label>
+        <input type="number" id="d2" step="any" required>
+    </div>
+    <button onclick="calculatePoints()">Find Points</button>
+    <h3>Possible Coordinates:</h3>
+    <div id="results"></div>
     <form action="/admin/add" method="POST">
         <input type="text" name="sensorId" placeholder="Sensor ID" required>
         <input type="number" name="lat" placeholder="Latitude" step="0.000001" required>
@@ -65,11 +87,125 @@
             <% }); %>
         </tbody>
     </table>
+
     
     <div id="map" style="height: 300px; width: 50%;"></div>
+    <!-- <button id="toggleButton">Hide Table</button> -->
+    <!-- <table id="leaks" border="1">
+        <thead>
+            <tr>
+                <th>Device Address</th>
+                <th>Time</th>
+                <th>Distance</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be appended here -->
+        <!-- </tbody> -->
+    <!-- </table> --> 
+
+    <!-- <h4>Sensor History</h4>
+    <div id="listContainer">
+        <!-- Unordered lists will be appended here -->
+    <!-- </div> --> 
+
+
+    <h3>Live Leak List</h3>
+  <ul id="device-list"></ul>
+
+  <label class="switch">
+    <input type="checkbox" id="toggleButton">
+    <span class="slider"></span>
+  </label>
+  <h3>History Leakage Data</h3>
+  <div id="hist">
+    <ul id="device-hist-list"></ul>
+    <label for="date-filter">Filter by Date:</label>
+    <input type="date" id="date-filter">
+    <button id="download-csv">Download CSV</button>
+  </div>
 
     <script>
 
+
+
+        // Function to generate the text representation of arrays
+        function generateLists(arrays) {
+            // Create an array to store the text representation of each array
+            const listText = [];
+
+            // Loop through each array in the input
+            for (const array of arrays) {
+                // Join the elements of each array into a string separated by commas
+                const listString = array.join(', ');
+                // Add the generated string to the listText array
+                listText.push(listString);
+            }
+
+            // Return the list of generated text strings
+            return listText;
+        }
+
+
+function toRadians(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        function toDegrees(radians) {
+            return radians * 180 / Math.PI;
+        }
+
+        function haversineFormula(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = toRadians(lat2 - lat1);
+            const dLng = toRadians(lng2 - lng1);
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function calculatePoints() {
+            const lat1 = parseFloat(document.getElementById('lat1').value);
+            const lng1 = parseFloat(document.getElementById('lng1').value);
+            const lat2 = parseFloat(document.getElementById('lat2').value);
+            const lng2 = parseFloat(document.getElementById('lng2').value);
+            const d1 = parseFloat(document.getElementById('d1').value);
+            const d2 = parseFloat(document.getElementById('d2').value);
+
+            const R = 6371; // Earth's radius in km
+
+            const dLat = toRadians(lat2 - lat1);
+            const dLng = toRadians(lng2 - lng1);
+            const A = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
+            const distBetweenPoints = 2 * R * Math.asin(Math.sqrt(A));
+
+            if (d1 + d2 < distBetweenPoints) {
+                document.getElementById('results').innerText = "No valid points possible with the given distances.";
+                return;
+            }
+
+            const midpointLat = (lat1 + lat2) / 2;
+            const midpointLng = (lng1 + lng2) / 2;
+            const results = [];
+
+            const dMid1 = haversineFormula(lat1, lng1, midpointLat, midpointLng);
+            const delta = Math.sqrt(d1 ** 2 - dMid1 ** 2);
+
+            // Compute the two possible points (simplified math for geodesics)
+            for (let sign of [1, -1]) {
+                const possibleLat = midpointLat + sign * delta / R * (180 / Math.PI);
+                const possibleLng = midpointLng + sign * delta / R * (180 / Math.PI) / Math.cos(toRadians(midpointLat));
+                results.push({ lat: possibleLat, lng: possibleLng });
+            }
+
+            // Display results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            results.forEach((point, index) => {
+                const para = document.createElement('p');
+                para.innerText = `Point ${index + 1}: Latitude = ${point.lat.toFixed(6)}, Longitude = ${point.lng.toFixed(6)}`;
+                resultsDiv.appendChild(para);
+            });
+        }
     //handle hard reset
     // function handleHardReset(){
     //     socket.emit('HardReset');
@@ -110,6 +246,248 @@ socket.on('sensorUpdated', data => {
     }
 });
 
+
+const ul = document.getElementById('device-hist-list');
+  const downloadButton = document.getElementById('download-csv');
+  const dateFilter = document.getElementById('date-filter');
+
+  let dataList = [];
+//history
+// Get the elements
+const toggleButton = document.getElementById('toggleButton');
+    const histDiv = document.getElementById('hist');
+
+    // Listen for the toggle button state change
+    toggleButton.addEventListener('change', () => {
+      if (toggleButton.checked) {
+        // Show the 'hist' div
+        histDiv.style.display = 'block';
+        // Emit the 'gethist' event to the server
+        socket.emit('gethist');
+        // console.log('Get history event emitted to server.');
+      } else {
+        // Hide the 'hist' div
+        histDiv.style.display = 'none';
+      }
+    });
+
+//     socket.on('histdatagot', data => {
+//     // Select the UL element
+//     const ul = document.getElementById('device-hist-list');
+
+//     // Clear any existing content in the UL
+//     ul.innerHTML = '';
+//     const maxRows = 6;
+//     // Loop through each JSON object in the data array
+//     data.slice(0,maxRows).forEach(item => {
+//         // Create a new list item (LI) element
+//         const li = document.createElement('li');
+
+//         // Format the item's data
+//         const content = `
+//             Sensor ID: ${item.sensorId}, 
+//             Type: ${item.type}, 
+//             Time: ${item.time}, 
+//             Distances History: ${item.distanceshistory.join(', ')}
+//         `;
+
+//         // Set the text content of the LI element
+//         li.textContent = content;
+
+//         // Append the LI element to the UL
+//         ul.appendChild(li);
+//     });
+// });
+
+
+
+
+
+socket.on('histdatagot', data => {
+    // Store the data for later use
+    dataList = data;
+
+    // Clear existing list items
+    ul.innerHTML = '';
+
+    // Display top items (limit by maxRows)
+    const maxRows = 6;
+    data.slice(0, maxRows).forEach(item => {
+      const li = document.createElement('li');
+      const content = `
+        Sensor ID: ${item.sensorId}, 
+        Type: ${item.type}, 
+        Time: ${item.time}, 
+        Distances History: ${item.distanceshistory.join(', ')}
+      `;
+      li.textContent = content;
+      ul.appendChild(li);
+    });
+  });
+
+  downloadButton.addEventListener('click', () => {
+    const filterDate = dateFilter.value;
+    let filteredData = dataList;
+
+    // Filter by date if a filter is set
+    if (filterDate) {
+      filteredData = dataList.filter(item => new Date(item.time).toDateString() === new Date(filterDate).toDateString());
+    }
+
+    // Generate CSV content
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      ["SensorID,Type,Time,Distance_x,Distance_y,Distance_z"]
+      .concat(filteredData.map(item => {
+        const distances = JSON.parse(item.distanceshistory);
+
+        // Ensure there are exactly three values for x, y, z
+        const distanceX = distances[0] ;
+        const distanceY = distances[1] ;
+        const distanceZ = distances[2] ;
+
+        return `${item.sensorId},${item.type},${item.time},${distanceX},${distanceY},${distanceZ}`;
+      }))
+      .join("\n");
+
+    // Create a downloadable link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "device_history.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+
+
+
+
+//     socket.on('histdatagot', data => {
+//     // Select the UL element
+//     const ul = document.getElementById('device-hist-list');
+
+//     // Clear any existing content in the UL
+//     ul.innerHTML = '';
+
+//     // Loop through each JSON object in the data array
+//     data.forEach(item => {
+//         // Create a new list item (LI) element
+//         const li = document.createElement('li');
+
+//         // Format the item's data
+//         const content = `
+//             Sensor ID: ${item.sensorId}, 
+//             Type: ${item.type}, 
+//             Time: ${item.time}, 
+//             Distances History: ${item.distanceshistory.join(', ')}
+//         `;
+
+//         // Set the text content of the LI element
+//         li.textContent = content;
+
+//         // Append the LI element to the UL
+//         ul.appendChild(li);
+//     });
+// });
+
+
+
+
+
+// Add a new device to the list
+socket.on("dist", (data) => {
+    // console.log("HERE IN DIST");
+    const Dev_Address = data.devAddress;
+    const type = data.type;
+    const t = data.time;
+    const distances = data.distances;
+    const deviceList = document.getElementById("device-list");
+    console.log('inside dist')
+    if (!document.getElementById(Dev_Address)) {
+    //   socket.emit('test');
+    const li = document.createElement("li");
+    li.id = Dev_Address; // Use Dev_address as the element's ID
+    li.textContent = `Address: ${Dev_Address},Type: ${type}, Time: ${t}, Distance: ${distances}`;
+    deviceList.appendChild(li);
+  }
+});
+
+// Remove a device from the list
+socket.on("dist_not", (Dev_Address) => {
+    const li = document.getElementById(Dev_Address);
+    if (li) {
+      console.log("HERE IN DIST_NOT")
+    // console.log("Removed!!!!!!!!!11")
+    const deviceList = document.getElementById("device-list");
+    deviceList.removeChild(li);
+  }
+});
+
+
+
+
+// const deviceList = document.getElementById("device-list");
+//   const downloadButton = document.getElementById("download-csv");
+//   const dateFilter = document.getElementById("date-filter");
+
+//   let dataList = [];
+
+//   socket.on("dist", (data) => {
+//     const Dev_Address = data.devAddress;
+//     const type = data.type;
+//     const t = data.time;
+//     const distances = data.distances;
+//     const [distanceX, distanceY, distanceZ] = distances;
+
+//     if (!document.getElementById(Dev_Address)) {
+//       const li = document.createElement("li");
+//       li.id = Dev_Address;
+//       li.textContent = `Address: ${Dev_Address}, Type: ${type}, Time: ${t}, Distance: [${distances}]`;
+//       deviceList.appendChild(li);
+//     }
+
+//     // Store data for CSV download
+//     dataList.push({
+//       Address: Dev_Address,
+//       Type: type,
+//       Time: t,
+//       Distance_x: distanceX,
+//       Distance_y: distanceY,
+//       Distance_z: distanceZ
+//     });
+//   });
+
+//   downloadButton.addEventListener("click", () => {
+//     const filterDate = dateFilter.value;
+//     let filteredData = dataList;
+
+//     if (filterDate) {
+//       filteredData = dataList.filter(item => new Date(item.Time).toDateString() === new Date(filterDate).toDateString());
+//     }
+
+//     const csvContent = "data:text/csv;charset=utf-8," + 
+//       ["Address,Type,Time,Distance_x,Distance_y,Distance_z"]
+//       .concat(filteredData.map(item => 
+//         `${item.Address},${item.Type},${item.Time},${item.Distance_x},${item.Distance_y},${item.Distance_z}`
+//       ))
+//       .join("\n");
+
+//     const encodedUri = encodeURI(csvContent);
+//     const link = document.createElement("a");
+//     link.setAttribute("href", encodedUri);
+//     link.setAttribute("download", "leak_data.csv");
+//     document.body.appendChild(link);
+//     link.click();
+//     document.body.removeChild(link);
+//   });
+
+
+
+
+
+
+
+
 const myCustomColourRed = '#da142d'
 
 const markerHtmlStylesRed = `
@@ -139,6 +517,8 @@ const markerHtmlStylesGreen = `
   transform: rotate(45deg);
   border: 1px solid #FFFFFF;
 `;
+
+
 
 socket.on('Threshold', (Dev_Address) => {
     console.log('Threshold update received:', Dev_Address);
@@ -198,6 +578,48 @@ socket.on('sensorDelete', data => {
     deleteSensor(data.sensorId);
 });
 
+
+
+// Toggle Button functionality
+// const toggleButton = document.getElementById('toggleButton');
+//         const table = document.getElementById('leaks');
+//         let isTableVisible = true;
+
+//         toggleButton.addEventListener('click', () => {
+//             if (isTableVisible) {
+//                 table.style.display = 'none';
+//                 toggleButton.textContent = 'Show Leak History';
+//             } else {
+//                 table.style.display = 'table';
+//                 toggleButton.textContent = 'Hide Leak History';
+//             }
+//             isTableVisible = !isTableVisible;
+//         });
+
+        // Socket event for appending data to the table
+        // socket.on('dist', data => {
+        //     const dev_addr = data.Dev_Address;
+        //     const time = data.t;
+        //     const dist = data.distances;
+
+        //     const tableBody = table.getElementsByTagName('tbody')[0];
+            
+        //     // Check if the row limit is reached
+        //     if (tableBody.rows.length >= maxRows) {
+        //         tableBody.deleteRow(0); // Remove the oldest row (first row)
+        //     }
+
+        //     const newRow = tableBody.insertRow();
+
+        //     const devAddrCell = newRow.insertCell(0);
+        //     const timeCell = newRow.insertCell(1);
+        //     const distCell = newRow.insertCell(2);
+
+        //     devAddrCell.textContent = dev_addr;
+        //     timeCell.textContent = time;
+        //     distCell.textContent = dist;
+        // });
+
 // Emit a request for real-time data on marker hover
 // sensors.forEach(sensor => {
 //     const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
@@ -210,6 +632,7 @@ socket.on('sensorDelete', data => {
 //         }
 //     });
 // });
+
 
 // Add or update a sensor on the map
 function addOrUpdateSensor(sensor) {
@@ -239,9 +662,19 @@ marker.on('click', () => {
         if (data.Dev_Address === sensor.sensorId) {
             // Generate a table from the received JSON data
             generateTable(data.data_sensor, sensor.sensorId);
+            // Call the function to generate the lists as text
+        const lists = generateLists(data.distHist);
+
+        // Get the container element where we will display the text
+        const container = document.getElementById('listContainer');
+
+        // Join the lists into one string with newline characters
+        container.textContent = lists.join('\n');
         }
     });
 });
+
+
         // Update existing marker
         // map.removeLayer(markers[sensorId]);
         // delete markers[sensorId];
@@ -461,39 +894,132 @@ function deleteSensor(sensorId) {
 
     // Function to update the download button with filtered data
     function updateDownloadButton(data) {
-        downloadButton.onclick = () => {
-            let csvContent = '';
+    downloadButton.onclick = () => {
+        let csvContent = '';
 
-            // Add headers
-            csvContent += `Data for Sensor: ${sensorId}\n`;
-            csvContent += `Data for Sensor Type: ${type}\n\n`;
+        // Add headers for the sensor metadata
+        csvContent += `Data for Sensor: ${sensorId}\n`;
+        csvContent += `Data for Sensor Type: ${type}\n\n`;
 
-            // Add table headers
-            csvContent += fields.join(',') + '\n';
+        // Add table headers, including separate columns for parsed Data tuples
+        const extendedFields = ['Time', 'Fcnt', 'SF', 'Data_X', 'Data_Y', 'Data_Z'];
+        csvContent += extendedFields.join(',') + '\n';
 
-            // Add table rows
-            data.forEach(rowData => {
-                const row = fields.map(field => {
-                    if (field === 'Data' && rowData[field]) {
-                        const parsedData = parseDataField(rowData[field]);
-                        return `"${parsedData.map(tuple => tuple.join(', ')).join('\n')}"`;
-                    }
-                    return rowData[field] !== undefined ? rowData[field] : 'N/A';
+        // Add table rows
+        data.forEach(rowData => {
+            const otherFields = [
+                rowData['Time'] || '',
+                rowData['Fcnt'] || '',
+                rowData['SF'] || ''
+            ];
+
+            if (rowData['Data']) {
+                // Parse the `Data` field into tuples
+                const parsedData = parseDataField(rowData['Data']);
+                parsedData.forEach((tuple, index) => {
+                    // Include other fields only for the first tuple, leave them empty for subsequent ones
+                    const row = (index === 0 ? otherFields : ['', '', ''])
+                        .concat(tuple)
+                        .join(',');
+                    csvContent += row + '\n';
                 });
-                csvContent += row.join(',') + '\n';
-            });
+            } else {
+                // If no `Data` field exists, add a single row with placeholders for the tuple
+                csvContent += [...otherFields, 'N/A', 'N/A', 'N/A'].join(',') + '\n';
+            }
+        });
 
-            // Create a blob and trigger download
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-    }
+        // Create a blob and trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+}
+
+//     function updateDownloadButton(data) {
+//     downloadButton.onclick = () => {
+//         let csvContent = '';
+
+//         // Add headers for the sensor metadata
+//         csvContent += `Data for Sensor: ${sensorId}\n`;
+//         csvContent += `Data for Sensor Type: ${type}\n\n`;
+
+//         // Add table headers
+//         const extendedFields = ['Time', 'Fcnt', 'SF', 'Data_X', 'Data_Y', 'Data_Z'];
+//         csvContent += extendedFields.join(',') + '\n';
+
+//         // Add table rows
+//         data.forEach(rowData => {
+//             const time = rowData['Time'] || '';
+//             const fcnt = rowData['Fcnt'] || 'N/A';
+//             const sf = rowData['SF'] || 'N/A';
+
+//             if (rowData['Data']) {
+//                 // Parse the `Data` field into tuples
+//                 const parsedData = parseDataField(rowData['Data']);
+
+//                 parsedData.forEach((tuple, index) => {
+//                     // First tuple gets the timestamp, subsequent rows leave it blank
+//                     const timeField = index === 0 ? time : '';
+//                     csvContent += [timeField, fcnt, sf, ...tuple].join(',') + '\n';
+//                 });
+//             } else {
+//                 // If no `Data` field exists, add a single row with placeholders for the tuple
+//                 csvContent += [time, fcnt, sf, 'N/A', 'N/A', 'N/A'].join(',') + '\n';
+//             }
+//         });
+
+//         // Create a blob and trigger download
+//         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+//         const url = URL.createObjectURL(blob);
+//         const link = document.createElement('a');
+//         link.href = url;
+//         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+//         document.body.appendChild(link);
+//         link.click();
+//         document.body.removeChild(link);
+//     };
+// }
+
+    // function updateDownloadButton(data) {
+    //     downloadButton.onclick = () => {
+    //         let csvContent = '';
+
+    //         // Add headers
+    //         csvContent += `Data for Sensor: ${sensorId}\n`;
+    //         csvContent += `Data for Sensor Type: ${type}\n\n`;
+
+    //         // Add table headers
+    //         csvContent += fields.join(',') + '\n';
+
+    //         // Add table rows
+    //         data.forEach(rowData => {
+    //             const row = fields.map(field => {
+    //                 if (field === 'Data' && rowData[field]) {
+    //                     const parsedData = parseDataField(rowData[field]);
+    //                     return `"${parsedData.map(tuple => tuple.join(', ')).join('\n')}"`;
+    //                 }
+    //                 return rowData[field] !== undefined ? rowData[field] : 'N/A';
+    //             });
+    //             csvContent += row.join(',') + '\n';
+    //         });
+
+    //         // Create a blob and trigger download
+    //         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    //         const url = URL.createObjectURL(blob);
+    //         const link = document.createElement('a');
+    //         link.href = url;
+    //         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
+    //         document.body.appendChild(link);
+    //         link.click();
+    //         document.body.removeChild(link);
+    //     };
+    // }
 
     // Initialize the download button with all data
     updateDownloadButton(jsonData);
