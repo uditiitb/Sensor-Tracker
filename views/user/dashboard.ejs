@@ -39,7 +39,6 @@ const markers = {}; // Store markers for each sensor by ID
 let sensors = <%- JSON.stringify(sensorsMeta) %>; // Initial sensors loaded from the server
 
 // Initialize the map with existing sensors
-// sensors.forEach(sensor => addOrUpdateSensor(sensor));
 sensors.forEach((sensor)=>{
     addOrUpdateSensor(sensor);
 });
@@ -97,7 +96,6 @@ const ul = document.getElementById('device-hist-list');
   const dateFilter = document.getElementById('date-filter');
 
   let dataList = [];
-//history
 // Get the elements
 const toggleButton = document.getElementById('toggleButton');
     const histDiv = document.getElementById('hist');
@@ -109,7 +107,6 @@ const toggleButton = document.getElementById('toggleButton');
         histDiv.style.display = 'block';
         // Emit the 'gethist' event to the server
         socket.emit('gethist');
-        // console.log('Get history event emitted to server.');
       } else {
         // Hide the 'hist' div
         histDiv.style.display = 'none';
@@ -170,17 +167,6 @@ const toggleButton = document.getElementById('toggleButton');
     link.click();
     document.body.removeChild(link);
   });
-
-
-
-
-
-
-
-
-
-
-
 
 
 const myCustomColourRed = '#da142d'
@@ -521,11 +507,6 @@ function deleteSensor(sensorId) {
     // Initialize the download button with all data
     updateDownloadButton(jsonData);
 }
-    
-/**
- * Create a container for the sensor data table if it doesn't already exist.
- * @returns {HTMLElement} The created container element.
- */
 function createTableContainer() {
     const container = document.createElement('div');
     container.id = 'sensor-data-table-container';
