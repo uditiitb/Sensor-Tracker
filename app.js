@@ -5,11 +5,9 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 const bodyParser = require('body-parser');
-// const mongoose = require('./db'); // MongoDB connection
 const NodeCache = require('node-cache');
 const SensorMeta = require('./models/SensorMetadata')
 const sensor = require('./models/sensor')
-// const LeakHistory = require('./models/LeakHistory');
 const LeakHistory = require('./models/LeakHistory')
 const fs = require('fs');
 const mongoose = require('mongoose');
@@ -206,7 +204,6 @@ fs.watch(filePath, async (eventType) => {
                     fs.appendFileSync(devFilePath, formattedData + '\n');
                     fs.appendFileSync('./check_thre.txt', formattedData + '\n');
 
-                    // fs.appendFileSync(devFilePath, JSON.stringify(jsonObject) + '\n');
 
                     // Check the number of lines in the file
                     const fileLines = fs.readFileSync(devFilePath, 'utf8').trim().split('\n');
@@ -252,40 +249,24 @@ fs.watch(filePath, async (eventType) => {
 
                         io.emit('dist', { devAddress: Dev_Address,type:sensorType, time: t, distances: distances });
 
-
-                        // Prepare the distance history array
-                        // let distancehist = [...distances, t]; // Assuming you want to append time `t` to the distances array
-                        
-
                         if(temp==0){
-
-                        
                         // Append directly to the LeakHistory collection
-                        try {
-                            // await LeakHistory.create({
-                            //     sensorId: Dev_Address,
-                            //     type: sensorType,
-                            //     time: t,
-                            //     distanceshistory: distances
-                            // });
-                            const leakHistory = new LeakHistory({
-                                sensorId: Dev_Address,
-                                type: sensorType,
-                                time: t,
-                                distanceshistory: distances
-                            });
-                            
-                            await leakHistory.save();
+                            try {
+                                const leakHistory = new LeakHistory({
+                                    sensorId: Dev_Address,
+                                    type: sensorType,
+                                    time: t,
+                                    distanceshistory: distances
+                                });
+                                
+                                await leakHistory.save();
 
-                            console.log('New distance history appended successfully');
-                        } catch (error) {
-                            console.error('Error appending distance history:', error);
-                        }
-                        temp =1;
+                                console.log('New distance history appended successfully');
+                            } catch (error) {
+                                console.error('Error appending distance history:', error);
+                            }
+                            temp =1;
                     }
-
-
-                        // fs.writeFileSync('./threshold_log.txt',`${jsonObject.Time} ${jsonObject.Fcnt}`,);
                         fs.appendFileSync('./threshold_log.txt',`${jsonObject.Time} - (Fcnt) ${jsonObject.Fcnt} - (SF) ${jsonObject.SF}\n`)
                         io.emit('Threshold',jsonObject.Dev_Address); //red
                     }
@@ -293,12 +274,6 @@ fs.watch(filePath, async (eventType) => {
                     // Use `Dev_Address` to determine the collection name
                     const collectionName = `sensor_${Dev_Address}`;
                     const DynamicModel = getModel(collectionName);
-
-                    // Save the new object as a document in the collection
-                    const newDocument = await DynamicModel.create(jsonObject);
-
-                    // console.log(`New document added to collection: ${collectionName}`);
-                    // console.log('Document:', newDocument);
                 } catch (err) {
                     console.error('Error processing JSON:', err);
                 }
@@ -347,7 +322,6 @@ app.post('/admin/add', async (req, res) => {
         
         if (collections.length === 0) {
             // Create collection if it doesn't exist
-            // await db.createCollection(collectionName);
             await db.createCollection(collectionName, {
                 capped: true,
                 size: 10240 // 10KB in bytes
