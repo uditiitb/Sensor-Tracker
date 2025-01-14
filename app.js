@@ -123,6 +123,7 @@ const filePath = './data.txt';
 let fileSize = 0;
 let result = 0;
 let distances = []
+let temp =0;
 let first100LinesString = ""
 
 fs.watch(filePath, async (eventType) => {
@@ -238,7 +239,7 @@ fs.watch(filePath, async (eventType) => {
                     }
 
                     if(result==0){
-                        // console.log("New data is too large");
+                        temp =0;
                         io.emit('dist_not',Dev_Address);
                         io.emit('Threshold1',jsonObject.Dev_Address); //green
                     }
@@ -255,6 +256,8 @@ fs.watch(filePath, async (eventType) => {
                         // Prepare the distance history array
                         // let distancehist = [...distances, t]; // Assuming you want to append time `t` to the distances array
                         
+
+                        if(temp==0){
 
                         
                         // Append directly to the LeakHistory collection
@@ -278,25 +281,8 @@ fs.watch(filePath, async (eventType) => {
                         } catch (error) {
                             console.error('Error appending distance history:', error);
                         }
-                        // // Find the document and append to distanceshistory array
-                        // try {
-                        //     const result = await sensorMetadata.findOneAndUpdate(
-                        //         { sensorId: Dev_Address }, // Query to find the document with the given sensorId
-                        //         {
-                        //             $push: {
-                        //                 distanceshistory: {
-                        //                     $each: [distancehist], // Append the distancehist array as a new entry
-                        //                     $slice: -6 // Keep only the last 6 entries in distanceshistory
-                        //                 }
-                        //             }
-                        //         },
-                        //         { new: true, upsert: true } // Return the updated document, create if not exists
-                        //     );
-
-                        //     console.log('Updated Sensor Document:', result);
-                        // } catch (error) {
-                        //     console.error('Error updating distanceshistory:', error);
-                        // }
+                        temp =1;
+                    }
 
 
                         // fs.writeFileSync('./threshold_log.txt',`${jsonObject.Time} ${jsonObject.Fcnt}`,);
