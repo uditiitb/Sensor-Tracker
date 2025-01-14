@@ -90,26 +90,6 @@
 
     
     <div id="map" style="height: 300px; width: 50%;"></div>
-    <!-- <button id="toggleButton">Hide Table</button> -->
-    <!-- <table id="leaks" border="1">
-        <thead>
-            <tr>
-                <th>Device Address</th>
-                <th>Time</th>
-                <th>Distance</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows will be appended here -->
-        <!-- </tbody> -->
-    <!-- </table> --> 
-
-    <!-- <h4>Sensor History</h4>
-    <div id="listContainer">
-        <!-- Unordered lists will be appended here -->
-    <!-- </div> --> 
-
-
     <h3>Live Leak List</h3>
   <ul id="device-list"></ul>
 
@@ -206,11 +186,6 @@ function toRadians(degrees) {
                 resultsDiv.appendChild(para);
             });
         }
-    //handle hard reset
-    // function handleHardReset(){
-    //     socket.emit('HardReset');
-    // }
-
 
 
     const socket = io(); // Connect to the Socket.IO server
@@ -224,7 +199,6 @@ const markers = {}; // Store markers for each sensor by ID
 let sensors = <%- JSON.stringify(sensors) %>; // Initial sensors loaded from the server
 
 // Initialize the map with existing sensors
-// sensors.forEach(sensor => addOrUpdateSensor(sensor));
 sensors.forEach((sensor)=>{
     addOrUpdateSensor(sensor);
 });
@@ -252,7 +226,6 @@ const ul = document.getElementById('device-hist-list');
   const dateFilter = document.getElementById('date-filter');
 
   let dataList = [];
-//history
 // Get the elements
 const toggleButton = document.getElementById('toggleButton');
     const histDiv = document.getElementById('hist');
@@ -270,37 +243,6 @@ const toggleButton = document.getElementById('toggleButton');
         histDiv.style.display = 'none';
       }
     });
-
-//     socket.on('histdatagot', data => {
-//     // Select the UL element
-//     const ul = document.getElementById('device-hist-list');
-
-//     // Clear any existing content in the UL
-//     ul.innerHTML = '';
-//     const maxRows = 6;
-//     // Loop through each JSON object in the data array
-//     data.slice(0,maxRows).forEach(item => {
-//         // Create a new list item (LI) element
-//         const li = document.createElement('li');
-
-//         // Format the item's data
-//         const content = `
-//             Sensor ID: ${item.sensorId}, 
-//             Type: ${item.type}, 
-//             Time: ${item.time}, 
-//             Distances History: ${item.distanceshistory.join(', ')}
-//         `;
-
-//         // Set the text content of the LI element
-//         li.textContent = content;
-
-//         // Append the LI element to the UL
-//         ul.appendChild(li);
-//     });
-// });
-
-
-
 
 
 socket.on('histdatagot', data => {
@@ -360,40 +302,6 @@ socket.on('histdatagot', data => {
   });
 
 
-
-
-//     socket.on('histdatagot', data => {
-//     // Select the UL element
-//     const ul = document.getElementById('device-hist-list');
-
-//     // Clear any existing content in the UL
-//     ul.innerHTML = '';
-
-//     // Loop through each JSON object in the data array
-//     data.forEach(item => {
-//         // Create a new list item (LI) element
-//         const li = document.createElement('li');
-
-//         // Format the item's data
-//         const content = `
-//             Sensor ID: ${item.sensorId}, 
-//             Type: ${item.type}, 
-//             Time: ${item.time}, 
-//             Distances History: ${item.distanceshistory.join(', ')}
-//         `;
-
-//         // Set the text content of the LI element
-//         li.textContent = content;
-
-//         // Append the LI element to the UL
-//         ul.appendChild(li);
-//     });
-// });
-
-
-
-
-
 // Add a new device to the list
 socket.on("dist", (data) => {
     // console.log("HERE IN DIST");
@@ -422,70 +330,6 @@ socket.on("dist_not", (Dev_Address) => {
     deviceList.removeChild(li);
   }
 });
-
-
-
-
-// const deviceList = document.getElementById("device-list");
-//   const downloadButton = document.getElementById("download-csv");
-//   const dateFilter = document.getElementById("date-filter");
-
-//   let dataList = [];
-
-//   socket.on("dist", (data) => {
-//     const Dev_Address = data.devAddress;
-//     const type = data.type;
-//     const t = data.time;
-//     const distances = data.distances;
-//     const [distanceX, distanceY, distanceZ] = distances;
-
-//     if (!document.getElementById(Dev_Address)) {
-//       const li = document.createElement("li");
-//       li.id = Dev_Address;
-//       li.textContent = `Address: ${Dev_Address}, Type: ${type}, Time: ${t}, Distance: [${distances}]`;
-//       deviceList.appendChild(li);
-//     }
-
-//     // Store data for CSV download
-//     dataList.push({
-//       Address: Dev_Address,
-//       Type: type,
-//       Time: t,
-//       Distance_x: distanceX,
-//       Distance_y: distanceY,
-//       Distance_z: distanceZ
-//     });
-//   });
-
-//   downloadButton.addEventListener("click", () => {
-//     const filterDate = dateFilter.value;
-//     let filteredData = dataList;
-
-//     if (filterDate) {
-//       filteredData = dataList.filter(item => new Date(item.Time).toDateString() === new Date(filterDate).toDateString());
-//     }
-
-//     const csvContent = "data:text/csv;charset=utf-8," + 
-//       ["Address,Type,Time,Distance_x,Distance_y,Distance_z"]
-//       .concat(filteredData.map(item => 
-//         `${item.Address},${item.Type},${item.Time},${item.Distance_x},${item.Distance_y},${item.Distance_z}`
-//       ))
-//       .join("\n");
-
-//     const encodedUri = encodeURI(csvContent);
-//     const link = document.createElement("a");
-//     link.setAttribute("href", encodedUri);
-//     link.setAttribute("download", "leak_data.csv");
-//     document.body.appendChild(link);
-//     link.click();
-//     document.body.removeChild(link);
-//   });
-
-
-
-
-
-
 
 
 const myCustomColourRed = '#da142d'
@@ -579,61 +423,6 @@ socket.on('sensorDelete', data => {
 });
 
 
-
-// Toggle Button functionality
-// const toggleButton = document.getElementById('toggleButton');
-//         const table = document.getElementById('leaks');
-//         let isTableVisible = true;
-
-//         toggleButton.addEventListener('click', () => {
-//             if (isTableVisible) {
-//                 table.style.display = 'none';
-//                 toggleButton.textContent = 'Show Leak History';
-//             } else {
-//                 table.style.display = 'table';
-//                 toggleButton.textContent = 'Hide Leak History';
-//             }
-//             isTableVisible = !isTableVisible;
-//         });
-
-        // Socket event for appending data to the table
-        // socket.on('dist', data => {
-        //     const dev_addr = data.Dev_Address;
-        //     const time = data.t;
-        //     const dist = data.distances;
-
-        //     const tableBody = table.getElementsByTagName('tbody')[0];
-            
-        //     // Check if the row limit is reached
-        //     if (tableBody.rows.length >= maxRows) {
-        //         tableBody.deleteRow(0); // Remove the oldest row (first row)
-        //     }
-
-        //     const newRow = tableBody.insertRow();
-
-        //     const devAddrCell = newRow.insertCell(0);
-        //     const timeCell = newRow.insertCell(1);
-        //     const distCell = newRow.insertCell(2);
-
-        //     devAddrCell.textContent = dev_addr;
-        //     timeCell.textContent = time;
-        //     distCell.textContent = dist;
-        // });
-
-// Emit a request for real-time data on marker hover
-// sensors.forEach(sensor => {
-//     const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
-//     marker.on('mouseover', () => {
-//         socket.emit('getSensorData', sensor.sensorId);
-//     });
-//     socket.on('realTimeData', data => {
-//         if (data.sensorId === sensor.sensorId) {
-//             marker.bindPopup(`Id: ${sensor.sensorId}, Data: ${JSON.stringify(data)}`).openPopup();
-//         }
-//     });
-// });
-
-
 // Add or update a sensor on the map
 function addOrUpdateSensor(sensor) {
     const { sensorId, location } = sensor;
@@ -651,8 +440,6 @@ marker.on('click', () => {
     // Emit a request for real-time data for the clicked sensor
     socket.emit('getSensorData', sensor.sensorId);
 
-    // Remove any existing listener for real-time data
-    // socket.off('realTimeData');
 
     // Attach a new listener for real-time data
     socket.on('realTimeData', data => {
@@ -675,30 +462,7 @@ marker.on('click', () => {
 });
 
 
-        // Update existing marker
-        // map.removeLayer(markers[sensorId]);
-        // delete markers[sensorId];
-        // // marker1.setLatLng([location.lat, location.lng]);
-        // const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
-        // markers[sensorId] = marker;
-        // marker.bindPopup(`<strong>${sensorId}</strong><br>(${location.lat}, ${location.lng})`);
-
-        //     // Add a click event listener to the marker
-        //     marker.on('click', () => {
-        //         // Emit a request for real-time data for the clicked sensor
-        //         socket.emit('getSensorData', sensor.sensorId);
-        //     });
-
-        //     // Listen for real-time data from the server
-        //     socket.on('realTimeData', data => {
-        //         console.log('Real-time data received:', data);
-
-        //         // Check if the data is for the clicked sensor
-        //         if (data.sensorId === sensor.sensorId) {
-        //             // Generate a table from the received JSON data
-        //             generateTable(data.data_sensor, sensor.sensorId);
-        //         }
-        //     });
+        
     } else {
         // Add a new marker    
         const marker = L.marker([location.lat, location.lng]).addTo(map);
@@ -742,45 +506,6 @@ function deleteSensor(sensorId) {
     }
 }
 
-// function deleteSensor(sensorId) {
-//     if (markers[sensorId]) {
-//         map.removeLayer(markers[sensorId]); // Remove the marker
-//         delete markers[sensorId]; // Remove from the markers object
-//         console.log(`Sensor with ID ${sensorId} deleted successfully.`);
-//     } else {
-//         console.log(`Sensor with ID ${sensorId} not found.`);
-//     }
-// }
-
-
-
-    //     sensors.forEach(sensor => {
-    //         // Add a marker for each sensor
-    //         const marker = L.marker([sensor.location.lat, sensor.location.lng]).addTo(map);
-
-    //         // Add a click event listener to the marker
-    //         marker.on('click', () => {
-    //             // Emit a request for real-time data for the clicked sensor
-    //             socket.emit('getSensorData', sensor.sensorId);
-    //         });
-
-    //         // Listen for real-time data from the server
-    //         socket.on('realTimeData', data => {
-    //             console.log('Real-time data received:', data);
-
-    //             // Check if the data is for the clicked sensor
-    //             if (data.sensorId === sensor.sensorId) {
-    //                 // Generate a table from the received JSON data
-    //                 generateTable(data.data_sensor, sensor.sensorId);
-    //             }
-    //         });
-    // });
-
-    /**
-     * Generate a table from the JSON data and append it to a container in the HTML.
-     * @param {Object} jsonData - Parsed JSON data from the server.
-     * @param {String} sensorId - ID of the sensor.
-     */
      function generateTable(jsonData, sensorId, type) {
     const container = document.getElementById('sensor-data-table-container') || createTableContainer();
 
@@ -941,226 +666,9 @@ function deleteSensor(sensorId) {
     };
 }
 
-//     function updateDownloadButton(data) {
-//     downloadButton.onclick = () => {
-//         let csvContent = '';
-
-//         // Add headers for the sensor metadata
-//         csvContent += `Data for Sensor: ${sensorId}\n`;
-//         csvContent += `Data for Sensor Type: ${type}\n\n`;
-
-//         // Add table headers
-//         const extendedFields = ['Time', 'Fcnt', 'SF', 'Data_X', 'Data_Y', 'Data_Z'];
-//         csvContent += extendedFields.join(',') + '\n';
-
-//         // Add table rows
-//         data.forEach(rowData => {
-//             const time = rowData['Time'] || '';
-//             const fcnt = rowData['Fcnt'] || 'N/A';
-//             const sf = rowData['SF'] || 'N/A';
-
-//             if (rowData['Data']) {
-//                 // Parse the `Data` field into tuples
-//                 const parsedData = parseDataField(rowData['Data']);
-
-//                 parsedData.forEach((tuple, index) => {
-//                     // First tuple gets the timestamp, subsequent rows leave it blank
-//                     const timeField = index === 0 ? time : '';
-//                     csvContent += [timeField, fcnt, sf, ...tuple].join(',') + '\n';
-//                 });
-//             } else {
-//                 // If no `Data` field exists, add a single row with placeholders for the tuple
-//                 csvContent += [time, fcnt, sf, 'N/A', 'N/A', 'N/A'].join(',') + '\n';
-//             }
-//         });
-
-//         // Create a blob and trigger download
-//         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//         const url = URL.createObjectURL(blob);
-//         const link = document.createElement('a');
-//         link.href = url;
-//         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
-//         document.body.appendChild(link);
-//         link.click();
-//         document.body.removeChild(link);
-//     };
-// }
-
-    // function updateDownloadButton(data) {
-    //     downloadButton.onclick = () => {
-    //         let csvContent = '';
-
-    //         // Add headers
-    //         csvContent += `Data for Sensor: ${sensorId}\n`;
-    //         csvContent += `Data for Sensor Type: ${type}\n\n`;
-
-    //         // Add table headers
-    //         csvContent += fields.join(',') + '\n';
-
-    //         // Add table rows
-    //         data.forEach(rowData => {
-    //             const row = fields.map(field => {
-    //                 if (field === 'Data' && rowData[field]) {
-    //                     const parsedData = parseDataField(rowData[field]);
-    //                     return `"${parsedData.map(tuple => tuple.join(', ')).join('\n')}"`;
-    //                 }
-    //                 return rowData[field] !== undefined ? rowData[field] : 'N/A';
-    //             });
-    //             csvContent += row.join(',') + '\n';
-    //         });
-
-    //         // Create a blob and trigger download
-    //         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    //         const url = URL.createObjectURL(blob);
-    //         const link = document.createElement('a');
-    //         link.href = url;
-    //         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
-    //         document.body.appendChild(link);
-    //         link.click();
-    //         document.body.removeChild(link);
-    //     };
-    // }
-
-    // Initialize the download button with all data
     updateDownloadButton(jsonData);
 }
 
-//      function generateTable(jsonData, sensorId, type) {
-//         const container = document.getElementById('sensor-data-table-container') || createTableContainer();
-
-// // Clear any existing content
-// container.innerHTML = `<h3>Data for Sensor: ${sensorId}</h3>`;
-// container.innerHTML += `<h3>Data for Sensor Type: ${type}</h3>`;
-
-// // Create date and time filter inputs
-// const filterContainer = document.createElement('div');
-// filterContainer.innerHTML = `
-//     <label for="startDate">Start Date:</label>
-//     <input type="date" id="startDate">
-//     <input type="time" id="startTime">
-//     <label for="endDate">End Date:</label>
-//     <input type="date" id="endDate">
-//     <input type="time" id="endTime">
-//     <button id="applyFilter">Apply</button>
-// `;
-// container.appendChild(filterContainer);
-
-// // Create the download button
-// const downloadButton = document.createElement('button');
-// downloadButton.textContent = 'Download as CSV';
-// container.appendChild(downloadButton);
-
-// // Define the fields to display
-// const fields = ['Time', 'Fcnt', 'SF', 'Data'];
-
-// // Create a table element
-// const table = document.createElement('table');
-// table.border = '1';
-// container.appendChild(table);
-
-// // Function to filter data
-// function filterData(data, startDate, startTime, endDate, endTime) {
-//     if (!startDate && !startTime && !endDate && !endTime) return data;
-
-//     const start = startDate
-//         ? new Date(`${startDate}T${startTime || '00:00'}`).getTime()
-//         : null;
-//     const end = endDate
-//         ? new Date(`${endDate}T${endTime || '23:59'}`).getTime()
-//         : null;
-
-//     return data.filter(row => {
-//         const rowTime = new Date(row.Time).getTime();
-//         return (!start || rowTime >= start) && (!end || rowTime <= end);
-//     });
-// }
-
-// // Function to generate the table
-// function generateTable(data) {
-//     table.innerHTML = ''; // Clear the table content
-
-//     if (!data || data.length === 0) {
-//         table.innerHTML = '<p>No data available for this sensor.</p>';
-//         return;
-//     }
-
-//     // Create table headers
-//     const thead = table.createTHead();
-//     const headerRow = thead.insertRow();
-//     fields.forEach(field => {
-//         const th = document.createElement('th');
-//         th.textContent = field;
-//         headerRow.appendChild(th);
-//     });
-
-//     // Create table rows
-//     const tbody = table.createTBody();
-//     data.forEach(rowData => {
-//         const row = tbody.insertRow();
-//         fields.forEach(field => {
-//             const td = document.createElement('td');
-//             td.textContent = rowData[field] !== undefined ? rowData[field] : 'N/A'; // Handle missing fields
-//             row.appendChild(td);
-//         });
-//     });
-// }
-
-// // Generate the table with all data initially
-// generateTable(jsonData);
-
-// // Add event listener to the apply button
-// document.getElementById('applyFilter').addEventListener('click', () => {
-//     const startDate = document.getElementById('startDate').value;
-//     const startTime = document.getElementById('startTime').value;
-//     const endDate = document.getElementById('endDate').value;
-//     const endTime = document.getElementById('endTime').value;
-
-//     const filteredData = filterData(jsonData, startDate, startTime, endDate, endTime);
-//     generateTable(filteredData); // Regenerate the table with filtered data
-
-//     // Update the download button functionality
-//     updateDownloadButton(filteredData);
-// });
-
-// // Function to update the download button with filtered data
-// function updateDownloadButton(data) {
-//     downloadButton.onclick = () => {
-//         let csvContent = '';
-
-//         // Add headers
-//         csvContent += `Data for Sensor: ${sensorId}\n`;
-//         csvContent += `Data for Sensor Type: ${type}\n\n`;
-
-//         // Add table headers
-//         csvContent += fields.join(',') + '\n';
-
-//         // Add table rows
-//         data.forEach(rowData => {
-//             const row = fields.map(field => (rowData[field] !== undefined ? rowData[field] : 'N/A'));
-//             csvContent += row.join(',') + '\n';
-//         });
-
-//         // Create a blob and trigger download
-//         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-//         const url = URL.createObjectURL(blob);
-//         const link = document.createElement('a');
-//         link.href = url;
-//         link.setAttribute('download', `${sensorId}.csv`); // Name file with sensor ID
-//         document.body.appendChild(link);
-//         link.click();
-//         document.body.removeChild(link);
-//     };
-// }
-
-// // Initialize the download button with all data
-// updateDownloadButton(jsonData);
-
-// }
-
-/**
- * Create a container for the sensor data table if it doesn't already exist.
- * @returns {HTMLElement} The created container element.
- */
 function createTableContainer() {
     const container = document.createElement('div');
     container.id = 'sensor-data-table-container';
