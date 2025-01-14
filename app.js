@@ -273,6 +273,7 @@ fs.watch(filePath, async (eventType) => {
                     // Use `Dev_Address` to determine the collection name
                     const collectionName = `sensor_${Dev_Address}`;
                     const DynamicModel = getModel(collectionName);
+                    const newDocument = await DynamicModel.create(jsonObject);
                 } catch (err) {
                     console.error('Error processing JSON:', err);
                 }
