@@ -267,7 +267,6 @@ fs.watch(filePath, async (eventType) => {
                             }
                             temp =1;
                     }
-                        fs.appendFileSync('./threshold_log.txt',`${jsonObject.Time} - (Fcnt) ${jsonObject.Fcnt} - (SF) ${jsonObject.SF}\n`)
                         io.emit('Threshold',jsonObject.Dev_Address); //red
                     }
 
