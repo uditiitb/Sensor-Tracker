@@ -6,13 +6,13 @@ import os
 # Function to decode base64 data
 def decode_data(encoded_data):
     if isinstance(encoded_data, dict):
-        print(f"Error: Encoded data is a dict, expected a string. Encoded data: {encoded_data}")
+        # print(f"Error: Encoded data is a dict, expected a string. Encoded data: {encoded_data}")
         return None
     try:
         decoded_bytes = base64.b64decode(encoded_data)
         return decoded_bytes
     except Exception as e:
-        print(f"Error decoding base64 data: {e}")
+        # print(f"Error decoding base64 data: {e}")
         return None
 
 # Function to convert data for Dev_Address 260B0B32 (hexadecimal representation)
@@ -23,60 +23,36 @@ def format_as_hex(decoded_bytes):
 def hex_to_decimal(hex_string):
     hex_pairs = [hex_string[i:i + 4] for i in range(0, len(hex_string), 4)]
     decimal_values = []
-
+    
     for hex_pair in hex_pairs:
         decimal_value = int(hex_pair, 16)
         if decimal_value > 32767:
             decimal_value -= 65536  # Convert to signed value
         decimal_values.append(decimal_value)
-
+    
     return decimal_values
 
-# Function to convert data for Dev_Address 260BACE8 (signed integers)
+# Function to convert data for Dev_Address 260BF43E (signed integers)
 def format_as_signed_integers(decoded_bytes):
-    try:
-        decoded_str = decoded_bytes.decode('utf-8', errors='replace')  # Replace invalid characters
-    except Exception as e:
-        print(f"Error decoding bytes to string: {e}")
-        return None
-
+    decoded_str = decoded_bytes.decode('utf-8')
     string_values = decoded_str.split(' ')
-
+    
     int_values = []
     for value in string_values:
         try:
             int_value = int(value)
             int_values.append(int_value)
         except ValueError:
-            continue
+            pass
+    
+    return ' '.join(map(str, int_values))
 
-    # Group the integer values in sets of three and format them
-    grouped_values = []
-    for i in range(0, len(int_values), 3):
-        grouped_values.append(' '.join(map(str, int_values[i:i + 3])))
-
-    return '\n'.join(grouped_values)  # Join all grouped strings with new lines
-
-# Function to convert data for Dev_Address 260B1B35 (floating-point values)
-def format_as_floats(decoded_bytes):
-    decoded_str = decoded_bytes.decode('utf-8', errors='replace').replace('\x00', '')  # Remove null characters
-    float_values = []
-
-    # Handle float conversion and catch any issues
-    for value in decoded_str.split():
-        try:
-            float_values.append(float(value))
-        except ValueError:
-            print(f"Error converting value to float: {value}")
-
-    int_values = [int(value) for value in float_values]  # Convert to integer to remove decimal places
-
-    grouped_values = []
-    for i in range(0, len(int_values), 3):
-        grouped_values.append(' '.join(map(str, int_values[i:i + 3])))
-
-    return '\n'.join(grouped_values)  # Join all grouped strings with new lines
-
+# Function to format decimal values in groups of three
+# def format_in_groups_of_three(decimal_values):
+#     grouped_values = []
+#     for i in range(0, len(decimal_values), 3):
+#         grouped_values.append(' '.join(map(str, decimal_values[i:i + 3])))
+#     return '\n'.join(grouped_values)
 # Function to format decimal values in groups of three
 def format_in_groups_of_three(decimal_values):
     grouped_values = []
@@ -87,8 +63,42 @@ def format_in_groups_of_three(decimal_values):
 
 
 
-
 def do(arg1,arg2):
+
+
+    sensor_type = arg1
+    encoded_data = arg2
+
+    # if not encoded_data:
+    #     print(f"No 'Data' field found in message: {json_message}")
+    #     return
+
+    decoded_bytes = decode_data(encoded_data)
+    # print('decoded bytes=> ',decoded_bytes)
+    if decoded_bytes is None:
+        return
+
+    if sensor_type == "K":
+        formatted_data = format_as_hex(decoded_bytes)
+        decimal_values = hex_to_decimal(formatted_data)
+        grouped_data = format_in_groups_of_three(decimal_values)
+        return grouped_data
+        # return [','.join(line.split()) for line in grouped_data.strip().split('\n')]
+        # print(f"Data for Dev_Address {dev_address}:\n{grouped_data}")
+        # store_data(dev_address, grouped_data)
+
+    elif sensor_type == "A":
+        formatted_data = format_as_signed_integers(decoded_bytes)
+        grouped_data = format_in_groups_of_three(
+            list(map(int, formatted_data.split()))
+        )  # Group the signed integers in threes
+        return grouped_data
+
+    else:
+        print(f"No processing rules for Dev_Address: {sensor_type}")
+
+
+def do1(arg1,arg2):
     # line = line.strip()
 
     # try:
@@ -109,43 +119,37 @@ def do(arg1,arg2):
     if decoded_bytes is None:
         return
 
-    if dev_address == "260BEA15":
-        formatted_data = format_as_hex(decoded_bytes)
-        decimal_values = hex_to_decimal(formatted_data)
-        grouped_data = format_in_groups_of_three(decimal_values)
+    formatted_data = format_as_hex(decoded_bytes)
+    decimal_values = hex_to_decimal(formatted_data)
+    grouped_data = format_in_groups_of_three(decimal_values)
+    if grouped_data != None:
+        print(1)
         return grouped_data
-        # return [','.join(line.split()) for line in grouped_data.strip().split('\n')]
-        # print(f"Data for Dev_Address {dev_address}:\n{grouped_data}")
-        # store_data(dev_address, grouped_data)
-
-    elif dev_address == "260B5630":
+    else:
+        print(2)
         formatted_data = format_as_signed_integers(decoded_bytes)
         if formatted_data:
             return formatted_data
-            # return [','.join(line.split()) for line in formatted_data.strip().split('\n')]
-            # print(f"Data for Dev_Address {dev_address}:\n{formatted_data}")
-            # store_data(dev_address, formatted_data)
 
-    elif dev_address == "260B277F":
-        formatted_data = format_as_floats(decoded_bytes)
-        return formatted_data
-        # return [','.join(line.split()) for line in formatted_data.strip().split('\n')]
-        # print(f"Data for Dev_Address {dev_address}:\n{formatted_data}")
-        # store_data(dev_address, formatted_data)
 
-    else:
-        print(f"No processing rules for Dev_Address: {dev_address}")
+#     return None
 
-def dummy(arg1,arg2):
-    return 12
+
+# def dummy(arg1,arg2):
+#     return 12
 
 
 if __name__ == "__main__":
     import sys
-    # arg1 = '260B5630'
+    # arg1 = 'A'
+    # arg2='AAC0AM0AZQDfAIYABgCHAKYAjQDAAM8ACAAGAEUApgCmAMAAZwDSAO0ARQDEAIYABwAmAKYATQDAANkAUQAGAGUApgCGAMAA5gALAA0ARQDVAMYABgAGAKYAbQDAANoACAAGAA=='
+    # arg2= 'AAA9AE0AZQDCACYABgBmAAYAbQAAAMoA3QAGAGUABgBGAAAAJwCdAM0AZQDAACYABgDmAAYADQAAAMsA/QAGAGUABgAmAAAAJgC9AE0AZQDIACYABgBmAAYAjQAAAMsAfQAGAGUABwBGAAAAJgCdAK0AZQDQACYABgAmAAcATQAAANcA/QAG'
+    # arg2= '+swDikCV+tcDpEDv+rIDgkAh+pUD5kCo+sgDY0AB+kkDQkB0+wQC+UB0+v4EvEBn+n4DIUCT+xcD0kA2+2ADzkCo+ooDUUBf+w4DdEA++ukDtkBd+tQD8UDd+lsDqD9S+uADkUAn+uUDjj+R+vgEEUBQ+p0DUEAC'
     # arg2 = "+msC5D+G+igClz/6+psDNkGH+dgCakBH+oYDB0C9+hsC0ECQ+pgDBUB7+nYDWkAp+lMDJEBr+l8DKUCY+nYDKT98+n8C+kAK+kADEEDu+tIDIz/r+oMDI0Dt+msDAUBq+tEDWkAe+m0DSUAm+oEDF0C3+hQDK0C0"
-    # arg2 = "AAD9AI0AZQDeACYABgAnAAYADQAAAM8AvQAGAGUABgBGAAAABgDdAO0AZQDDACYABgDGAAYALQAAANgAfQAGAGUABgAmAAAAJwA9AC0AZQDHAEYABgCmAAYADQAAANMAvQAGAGUABgBGAAAARgD9AK0AZQDYAEYABgAmAAcArQAAAMUAPQAG"
-
+    # arg2 = "AAAzADYAZgDLAOYABgCGAKYA9gBAAMIAkgAHAGYApgAnAEAAZgDyAJYAhgDEACcABgBGAKYAdgBAAMMAUgAGAGYApgCGAEAABgCzADYAZgDaAGYABgBmAKYAFgBAAM0AMgAGAIYApgDmAEAABgDSABYAhgDZAEYABgCGAKYAdgBAANMA8gAG"
+    # arg3 = "ATs/6QFRAUc/7gBnAcxAGAHdAbE/+gC8ARc/5gGRAT1APwFnAcFAVQGiAdk/xwDiAWtAFf/aAZA/ugKZAUdAtQCOAdJAQgCoAZRABgF4AVc/xgEgAZxAKgEMAR1AbQE7ATNAAwDXAZQ/UADWATNAgADzAWc/9ADz"
+    # arg3 = "AAAdAG0AZQDGAEYABgDmAAYATQAAANMAnQAGAGUABgAmAAAARgB9AA0AZQDIACYABgBmAAcAbQAAAMEAXQAGAIUABwBGAAAABwB9AI0AZQDBAEYABwAGAAYA7QAAAM8APQAHAGUABgBGAAAABgAdAK0AZQDZAEYABgDnAAYAzQAAAMMAPQAG/QAG"
     arg1 = sys.argv[1]  # Get argument passed from Node.js
     arg2 = sys.argv[2]  # Get argument passed from Node.js
     print(do(arg1,arg2)) 
+    # print(arg2.decode('utf-8', errors='replace'))
