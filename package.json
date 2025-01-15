@@ -1,7 +1,6 @@
 {
   "name": "try_app1",
   "version": "1.0.0",
-  "main": "main.js",
   "scripts": {
     "start": "nodemon app.js"
   },
