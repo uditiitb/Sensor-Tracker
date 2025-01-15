@@ -209,73 +209,134 @@ def do(lines, start_idx=0, end_idx=99):
     return detection_status
 
 
-def do1(lines):
-    df = string_to_dataframe(lines)
-    # print(df)
-    columns_to_calculate = ['X', 'Y', 'Z']
-    window_size = 2
+def do1(sensortype,lines):
+    if sensortype=='K':
+        df = string_to_dataframe(lines)
+        # print(df)
+        columns_to_calculate = ['X', 'Y', 'Z']
+        window_size = 2
 
-    # Define separate thresholds for each column
-    thresholds = {
-        'X': 100,
-        'Y': 100,
-        'Z': 110
-    }
-
-    results = {}
-    all_means_greater_than_100 = True
-    all_columns_exceed_threshold = True
-
-    for col in columns_to_calculate:
-        # Calculate rolling standard deviation
-        rolling_std = df[col].rolling(window=window_size).std()
-
-        # Drop NaN values created by rolling window calculation
-        rolling_std = rolling_std.dropna()
-
-        # Calculate the mean of the rolling standard deviation
-        mean_rolling_std = rolling_std.mean()
-
-        # Check if the mean exceeds the general threshold of 100
-        if mean_rolling_std <= 100:
-            all_means_greater_than_100 = False
-
-        # Check if the mean exceeds the column-specific threshold
-        if mean_rolling_std <= thresholds[col]:
-            all_columns_exceed_threshold = False
-
-        # Store the results
-        results[col] = {
-            'mean_rolling_std': mean_rolling_std,
-            'exceeds_threshold': mean_rolling_std > thresholds[col]
+        # Define separate thresholds for each column
+        thresholds = {
+            'X': 100,
+            'Y': 100,
+            'Z': 110
         }
 
-    # Determine leak detection status
-    if all_means_greater_than_100 and all_columns_exceed_threshold:
-        detection_status = 1
-        # message = f"Leak detected between data points {start_idx + 1} and {end_idx} due to high rolling std deviations in all columns."
-    else:
-        detection_status = 0
-        # message = f"No leak detected between data points {start_idx + 1} and {end_idx}."
+        results = {}
+        all_means_greater_than_100 = True
+        all_columns_exceed_threshold = True
 
-    # Print detailed results for each column
-    # for col, result in results.items():
-        # print(f"Column: {col}")
-        # print(f"  mean_rolling_std: {result['mean_rolling_std']}")
-        # print(f"  Exceeds Threshold: {'Yes' if result['exceeds_threshold'] else 'No'}")
-        # print()
+        for col in columns_to_calculate:
+            # Calculate rolling standard deviation
+            rolling_std = df[col].rolling(window=window_size).std()
 
-    # Return detection status and message
-    return detection_status
+            # Drop NaN values created by rolling window calculation
+            rolling_std = rolling_std.dropna()
+
+            # Calculate the mean of the rolling standard deviation
+            mean_rolling_std = rolling_std.mean()
+
+            # Check if the mean exceeds the general threshold of 100
+            if mean_rolling_std <= 100:
+                all_means_greater_than_100 = False
+
+            # Check if the mean exceeds the column-specific threshold
+            if mean_rolling_std <= thresholds[col]:
+                all_columns_exceed_threshold = False
+
+            # Store the results
+            results[col] = {
+                'mean_rolling_std': mean_rolling_std,
+                'exceeds_threshold': mean_rolling_std > thresholds[col]
+            }
+
+        # Determine leak detection status
+        if all_means_greater_than_100 and all_columns_exceed_threshold:
+            detection_status = 1
+            # message = f"Leak detected between data points {start_idx + 1} and {end_idx} due to high rolling std deviations in all columns."
+        else:
+            detection_status = 0
+            # message = f"No leak detected between data points {start_idx + 1} and {end_idx}."
+
+        # Print detailed results for each column
+        # for col, result in results.items():
+            # print(f"Column: {col}")
+            # print(f"  mean_rolling_std: {result['mean_rolling_std']}")
+            # print(f"  Exceeds Threshold: {'Yes' if result['exceeds_threshold'] else 'No'}")
+            # print()
+
+        # Return detection status and message
+        return detection_status
+    if sensortype=='A':
+        df = string_to_dataframe(lines)
+        # print(df)
+        columns_to_calculate = ['X', 'Y', 'Z']
+        window_size = 2
+
+        # Define separate thresholds for each column
+        thresholds = {
+            'X': 800,
+            'Y': 800,
+            'Z': 400
+        }
+
+        results = {}
+        all_means_greater_than_100 = True
+        all_columns_exceed_threshold = True
+
+        for col in columns_to_calculate:
+            # df[col] = abs(df[col])
+            # Calculate rolling standard deviation
+            rolling_std = df[col].rolling(window=window_size).std()
+
+            # Drop NaN values created by rolling window calculation
+            rolling_std = rolling_std.dropna()
+
+            # Calculate the mean of the rolling standard deviation
+            mean_rolling_std = rolling_std.mean()
+
+            # Check if the mean exceeds the general threshold of 100
+            if mean_rolling_std <= 100:
+                all_means_greater_than_100 = False
+
+            # Check if the mean exceeds the column-specific threshold
+            if mean_rolling_std <= thresholds[col]:
+                all_columns_exceed_threshold = False
+
+            # Store the results
+            results[col] = {
+                'mean_rolling_std': mean_rolling_std,
+                'exceeds_threshold': mean_rolling_std > thresholds[col]
+            }
+
+        # Determine leak detection status
+        if all_means_greater_than_100 and all_columns_exceed_threshold:
+            detection_status = 1
+            # message = f"Leak detected between data points {start_idx + 1} and {end_idx} due to high rolling std deviations in all columns."
+        else:
+            detection_status = 0
+            # message = f"No leak detected between data points {start_idx + 1} and {end_idx}."
+
+        # Print detailed results for each column
+        # for col, result in results.items():
+            # print(f"Column: {col}")
+            # print(f"  mean_rolling_std: {result['mean_rolling_std']}")
+            # print(f"  Exceeds Threshold: {'Yes' if result['exceeds_threshold'] else 'No'}")
+            # print()
+
+        # Return detection status and message
+        return detection_status
 
 
 if __name__ == "__main__":
     import sys
     
     arg1 = sys.argv[1]  # Get argument passed from Node.js\
+    arg2 = sys.argv[2]  # Get argument passed from Node.js\
     # arg2 = "-1324 960 16623\n-1463 805 16524\n-1354 821 16689s\n-1403 876 16562s\n-1415 853 16470s\n-1527 822 16503s\n-1238 693 16616s\n-1527 873 16310s\n-1471 1098 16573s\n-1396 836 16685s\n-1549 807 16569s\n-1438 737 16479s\n-1500 743 16559s\n-1418 823 16483"
     # arg3 = "-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1418 858 16425\n-1453 804 16491\n-1441 809 16536\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1418 858 16425\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1381 822 16775\n-1576 618 16455\n-1381 822 16775\n-1576 618 16455\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1418 858 16425\n-1453 804 16491\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1418 858 16425\n-1381 822 16775\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1418 858 16425\n-1576 618 16455\n-1402 775 16573\n-1509 720 16528\n-1402 775 16573\n-1509 720 16528\n-1384 773 16507\n-1509 720 16528\n-1384 773 16507\n-1384 773 16507\n-1418 858 16425\n-1453 804 16491\n-1441 809 16536"
-    print(do1(arg1))
+    print(do1(arg1,arg2))
     # print(string_to_dataframe(arg2))
 
 
