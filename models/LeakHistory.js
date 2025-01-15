@@ -18,7 +18,8 @@ const LeakSchema = new mongoose.Schema({
         required: true
     }
 },{
-    capped: { size: 10240 }
+    capped: { size: 1024 }, // Capped collection with specified size in bytes
+    collection: 'leakhistories'
 });
 
 module.exports = mongoose.model('LeakHistory', LeakSchema);
