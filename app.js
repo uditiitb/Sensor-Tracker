@@ -1,4 +1,5 @@
 // Requiring modules
+const ejs = require('ejs')
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
