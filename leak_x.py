@@ -222,6 +222,42 @@ def dist(sensortype,lines):
             'Y': 100,
             'Z': 110
         }
+        localization_conditions = {
+        'X': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ],
+        'Y': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ],
+        'Z': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ]
+    }
+
+        # for col, distance in localization_results.items():
+            # if distance is not None:
+                # print(f"  {col}: {distance}m (+{confidence_interval}m / -{confidence_interval}m)")
+            # else:
+                # print(f"  {col}: No matching condition for mean rolling std dev: {results[col]['mean_rolling_std']:.2f}")
+
 
         results = {}
         all_means_greater_than_100 = True
@@ -252,27 +288,42 @@ def dist(sensortype,lines):
                 'mean_rolling_std': mean_rolling_std[i],
                 'exceeds_threshold': mean_rolling_std[i] > thresholds[col]
             }
-        distance = [0,0,0]
-        if mean_rolling_std[0]>=100 and mean_rolling_std[0]<=150:
-            distance[0] = 15
-        elif mean_rolling_std[0]>=150 and mean_rolling_std[0]<=200:
-            distance[0] = 25
-        else:
-            distance[0] = 0
+        localization_results = {}
 
-        if mean_rolling_std[1]>=100 and mean_rolling_std[1]<=150:
-            distance[1] = 15
-        elif mean_rolling_std[1]>=150 and mean_rolling_std[1]<=200:
-            distance[1] = 25
-        else:
-            distance[1] = 0
+        for col in columns_to_calculate:
+            localized_distance = None
+            mean_std = results[col]['mean_rolling_std']
 
-        if mean_rolling_std[2]>=100 and mean_rolling_std[2]<=150:
-            distance[2] = 15
-        elif mean_rolling_std[2]>=150 and mean_rolling_std[2]<=200:
-            distance[2] = 25
-        else:
-            distance[2] = 0
+            for condition, distance in localization_conditions[col]:
+                if condition(mean_std):
+                    localized_distance = distance
+                    break
+
+            localization_results[col] = localized_distance
+
+
+
+        # distance = [0,0,0]
+        # if mean_rolling_std[0]>=100 and mean_rolling_std[0]<=150:
+        #     distance[0] = 15
+        # elif mean_rolling_std[0]>=150 and mean_rolling_std[0]<=200:
+        #     distance[0] = 25
+        # else:
+        #     distance[0] = 0
+
+        # if mean_rolling_std[1]>=100 and mean_rolling_std[1]<=150:
+        #     distance[1] = 15
+        # elif mean_rolling_std[1]>=150 and mean_rolling_std[1]<=200:
+        #     distance[1] = 25
+        # else:
+        #     distance[1] = 0
+
+        # if mean_rolling_std[2]>=100 and mean_rolling_std[2]<=150:
+        #     distance[2] = 15
+        # elif mean_rolling_std[2]>=150 and mean_rolling_std[2]<=200:
+        #     distance[2] = 25
+        # else:
+        #     distance[2] = 0
 
 
         # Determine leak detection status
@@ -291,7 +342,7 @@ def dist(sensortype,lines):
             # print()
 
         # Return detection status and message
-        return distance
+        return [localization_results[0],localization_results[1],localization_results[2]];
     if sensortype == "A":
         df = string_to_dataframe(lines)
         # print(df)
@@ -305,6 +356,37 @@ def dist(sensortype,lines):
             'Z': 400
         }
 
+        localization_conditions = {
+        'X': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ],
+        'Y': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ],
+        'Z': [
+            (lambda mean_std: 900 <= mean_std < 1400, 5),
+            (lambda mean_std: 700 <= mean_std < 900, 10),
+            (lambda mean_std: 600 <= mean_std < 700, 20),
+            (lambda mean_std: 500 <= mean_std < 600, 30),
+            (lambda mean_std: 400 <= mean_std < 500, 40),
+            (lambda mean_std: 300 <= mean_std < 400, 50),
+            (lambda mean_std: 200 <= mean_std < 300, 60),
+        ]
+    }
+
+
         results = {}
         all_means_greater_than_100 = True
         all_columns_exceed_threshold = True
@@ -357,6 +439,21 @@ def dist(sensortype,lines):
             distance[2] = 0
 
 
+        localization_results = {}
+
+        for col in columns_to_calculate:
+            localized_distance = None
+            mean_std = results[col]['mean_rolling_std']
+
+            for condition, distance in localization_conditions[col]:
+                if condition(mean_std):
+                    localized_distance = distance
+                    break
+
+            localization_results[col] = localized_distance
+
+
+
         # Determine leak detection status
         # if all_means_greater_than_100 and all_columns_exceed_threshold:
             # detection_status = 1
@@ -373,7 +470,9 @@ def dist(sensortype,lines):
             # print()
 
         # Return detection status and message
-        return distance
+        # return distance
+        return [localization_results[0],localization_results[1],localization_results[2]];
+
 
 
 
