@@ -289,6 +289,10 @@ def dist(sensortype,lines):
                 'exceeds_threshold': mean_rolling_std[i] > thresholds[col]
             }
         localization_results = {}
+        
+        localization_results[0]=-1;
+        localization_results[1]=-1;
+        localization_results[2]=-1;
 
         for col in columns_to_calculate:
             localized_distance = None
@@ -303,27 +307,27 @@ def dist(sensortype,lines):
 
 
 
-        # distance = [0,0,0]
-        # if mean_rolling_std[0]>=100 and mean_rolling_std[0]<=150:
-        #     distance[0] = 15
-        # elif mean_rolling_std[0]>=150 and mean_rolling_std[0]<=200:
-        #     distance[0] = 25
-        # else:
-        #     distance[0] = 0
+        distance = [0,0,0]
+        if mean_rolling_std[0]>=100 and mean_rolling_std[0]<=150:
+            distance[0] = 15
+        elif mean_rolling_std[0]>=150 and mean_rolling_std[0]<=200:
+            distance[0] = 25
+        else:
+            distance[0] = 0
 
-        # if mean_rolling_std[1]>=100 and mean_rolling_std[1]<=150:
-        #     distance[1] = 15
-        # elif mean_rolling_std[1]>=150 and mean_rolling_std[1]<=200:
-        #     distance[1] = 25
-        # else:
-        #     distance[1] = 0
+        if mean_rolling_std[1]>=100 and mean_rolling_std[1]<=150:
+            distance[1] = 15
+        elif mean_rolling_std[1]>=150 and mean_rolling_std[1]<=200:
+            distance[1] = 25
+        else:
+            distance[1] = 0
 
-        # if mean_rolling_std[2]>=100 and mean_rolling_std[2]<=150:
-        #     distance[2] = 15
-        # elif mean_rolling_std[2]>=150 and mean_rolling_std[2]<=200:
-        #     distance[2] = 25
-        # else:
-        #     distance[2] = 0
+        if mean_rolling_std[2]>=100 and mean_rolling_std[2]<=150:
+            distance[2] = 15
+        elif mean_rolling_std[2]>=150 and mean_rolling_std[2]<=200:
+            distance[2] = 25
+        else:
+            distance[2] = 0
 
 
         # Determine leak detection status
@@ -342,6 +346,8 @@ def dist(sensortype,lines):
             # print()
 
         # Return detection status and message
+        # return distance
+
         return [localization_results[0],localization_results[1],localization_results[2]];
     if sensortype == "A":
         df = string_to_dataframe(lines)
@@ -440,6 +446,10 @@ def dist(sensortype,lines):
 
 
         localization_results = {}
+        localization_results[0]=-1;
+        localization_results[1]=-1;
+        localization_results[2]=-1;
+        
 
         for col in columns_to_calculate:
             localized_distance = None
@@ -472,6 +482,7 @@ def dist(sensortype,lines):
         # Return detection status and message
         # return distance
         return [localization_results[0],localization_results[1],localization_results[2]];
+        # return arr;
 
 
 
