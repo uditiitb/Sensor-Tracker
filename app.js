@@ -1,5 +1,5 @@
 // Requiring modules
-const ejs = require('ejs')
+const ejs = require('ejs');
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
@@ -246,11 +246,12 @@ fs.watch(filePath, async (eventType) => {
                         console.log('DIST: ',distances)
 
                         const t = jsonObject.Time;
+                        temp++;
 
 
                         io.emit('dist', { devAddress: Dev_Address,type:sensorType, time: t, distances: distances });
 
-                        if(temp==0){
+                        if(temp==3){
                         // Append directly to the LeakHistory collection
                             try {
                                 const leakHistory = new LeakHistory({
@@ -266,7 +267,7 @@ fs.watch(filePath, async (eventType) => {
                             } catch (error) {
                                 console.error('Error appending distance history:', error);
                             }
-                            temp =1;
+                            // temp =1;
                     }
                         io.emit('Threshold',jsonObject.Dev_Address); //red
                     }
