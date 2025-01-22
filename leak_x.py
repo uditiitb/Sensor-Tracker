@@ -290,9 +290,9 @@ def dist(sensortype,lines):
             }
         localization_results = {}
         
-        localization_results[0]=-1;
-        localization_results[1]=-1;
-        localization_results[2]=-1;
+        localization_results['X']=-1;
+        localization_results['Y']=-1;
+        localization_results['Z']=-1;
 
         for col in columns_to_calculate:
             localized_distance = None
@@ -348,7 +348,7 @@ def dist(sensortype,lines):
         # Return detection status and message
         # return distance
 
-        return [localization_results[0],localization_results[1],localization_results[2]];
+        return [localization_results['X'],localization_results['Y'],localization_results['Z']];
     if sensortype == "A":
         df = string_to_dataframe(lines)
         # print(df)
@@ -481,7 +481,7 @@ def dist(sensortype,lines):
 
         # Return detection status and message
         # return distance
-        return [localization_results[0],localization_results[1],localization_results[2]];
+        return [localization_results['X'],localization_results['Y'],localization_results['Z']];
         # return arr;
 
 
